@@ -574,6 +574,7 @@
         this.setStage("celebrate");
         this.sound.startCelebrateTrack();
         this.sound.playConfetti();
+        this.updateDrawerView("guestbook");
         this.elements.modeTag.textContent = "狂欢时刻";
         this.elements.statusCopy.textContent = "生日歌响起来啦，派对功能已经全部解锁。";
         this.elements.cakeCaption.textContent = "蜡烛都熄灭啦，留下祝福并生成生日贺卡吧。";
@@ -671,6 +672,7 @@
       this.elements.menuList.querySelectorAll(".menu-button").forEach((button) => {
         button.disabled = !unlocked;
       });
+      this.elements.saveCardButton.disabled = !unlocked;
       this.elements.menuLockTip.textContent = unlocked
         ? "派对功能已解锁，可以继续留言、装饰和分享。"
         : "完成吹蜡烛后会解锁全部派对功能。";
@@ -692,12 +694,16 @@
 
     updateDrawerView(viewName) {
       this.state.panel = viewName;
+      this.elements.menuList.querySelectorAll(".menu-button").forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.panel === viewName);
+      });
       this.elements.utilityDrawer.querySelectorAll(".drawer-view").forEach((view) => {
         view.classList.toggle("is-active", view.dataset.view === viewName);
       });
     }
 
     copyInvite() {
+      this.syncSharedState();
       Utils.copyText(this.elements.shareLinkOutput.value).then(() => {
         this.showToast("派对链接已经复制好了，快发给朋友吧。", true);
       }).catch(() => {
