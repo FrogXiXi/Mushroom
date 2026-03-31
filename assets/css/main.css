@@ -633,6 +633,206 @@ body:not([data-stage="loading"]) .loader-screen {
   top: 22px;
 }
 
+.menu-button:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+}
+
+.candle {
+  position: absolute;
+  left: calc(var(--x) * 1%);
+  top: calc(var(--y) * 1%);
+  transform: translate(-50%, -50%);
+  padding: 0;
+  background: transparent;
+  width: 38px;
+  height: 136px;
+}
+
+.candle::before {
+  content: "";
+  position: absolute;
+  inset: auto 8px 24px;
+  height: 82px;
+  border: var(--line);
+  border-radius: 16px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.95) 0 7px,
+    rgba(255, 183, 208, 0.95) 7px 14px
+  );
+  box-shadow: 0 10px 0 rgba(122, 72, 39, 0.14);
+}
+
+.candle.blue::before {
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.95) 0 7px, rgba(158, 218, 246, 0.95) 7px 14px);
+}
+
+.candle.yellow::before {
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.95) 0 7px, rgba(255, 216, 110, 0.95) 7px 14px);
+}
+
+.candle.mint::before {
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.95) 0 7px, rgba(182, 238, 196, 0.95) 7px 14px);
+}
+
+.digit-candle {
+  width: 62px;
+  height: 128px;
+}
+
+.digit-candle::before {
+  inset: auto 0 12px;
+  height: 88px;
+  background: linear-gradient(180deg, #fffdf8 0%, #ffdbe7 100%);
+}
+
+.digit-glyph {
+  position: absolute;
+  inset: auto 0 30px;
+  text-align: center;
+  font-size: 4rem;
+  line-height: 1;
+  font-weight: 900;
+  color: var(--ink);
+  text-shadow:
+    -1px -1px 0 #fff,
+    1px -1px 0 #fff,
+    -1px 1px 0 #fff,
+    1px 1px 0 #fff;
+}
+
+.candle-core {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  width: 6px;
+  height: 22px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #7b4d37;
+}
+
+.candle-flame,
+.candle-smoke {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.candle-flame {
+  width: 22px;
+  height: 34px;
+  border: var(--line);
+  border-radius: 50% 50% 60% 60%;
+  background: radial-gradient(circle at 50% 30%, #fffbe6 0, #ffd468 42%, #ff9b6d 80%, #ff7d68 100%);
+  opacity: 0;
+}
+
+.candle-smoke {
+  width: 22px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.94) 0, rgba(255, 255, 255, 0.24) 72%, transparent 100%);
+  opacity: 0;
+}
+
+.candle.is-lit .candle-flame {
+  opacity: 1;
+  animation: flame-flicker 760ms infinite ease-in-out;
+}
+
+.candle.is-out .candle-smoke {
+  opacity: 1;
+  animation: smoke-up 1.2s ease forwards;
+}
+
+.candle.is-out::before {
+  filter: saturate(0.64) brightness(0.9);
+}
+
+body.is-blowing .candle.is-lit {
+  animation: candle-sway 220ms infinite alternate ease-in-out;
+}
+
+.animal-card.is-bouncing,
+.hero-character.is-bouncing,
+.pet-preview.is-bouncing {
+  animation: hop 560ms ease;
+}
+
+.trail-dot,
+.firework-piece,
+.confetti-piece {
+  position: fixed;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 46;
+}
+
+.trail-dot {
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0, rgba(255, 139, 179, 0.9) 54%, transparent 100%);
+  transform: translate(-50%, -50%);
+  animation: fade-burst 680ms ease forwards;
+}
+
+.firework-piece {
+  width: 10px;
+  height: 10px;
+  background: #ffd468;
+  transform: translate(-50%, -50%);
+  animation: spark 820ms ease forwards;
+}
+
+.confetti-piece {
+  top: -20px;
+  width: 12px;
+  height: 20px;
+  border: 2px solid rgba(106, 63, 43, 0.16);
+  animation: fall 3.8s linear forwards;
+}
+
+@keyframes flame-flicker {
+  0%,
+  100% { transform: translateX(-50%) scale(0.96) rotate(-2deg); }
+  50% { transform: translateX(-50%) scale(1.06) rotate(2deg); }
+}
+
+@keyframes smoke-up {
+  0% { transform: translate(-50%, 0) scale(0.7); opacity: 0.9; }
+  100% { transform: translate(-50%, -34px) scale(1.3); opacity: 0; }
+}
+
+@keyframes candle-sway {
+  0% { transform: translate(-50%, -50%) rotate(-2deg); }
+  100% { transform: translate(-50%, -50%) rotate(2deg); }
+}
+
+@keyframes hop {
+  0% { transform: translateY(0) rotate(0); }
+  45% { transform: translateY(-10px) rotate(-2deg); }
+  100% { transform: translateY(0) rotate(0); }
+}
+
+@keyframes fade-burst {
+  0% { opacity: 0.8; transform: translate(-50%, -50%) scale(0.8); }
+  100% { opacity: 0; transform: translate(-50%, -76%) scale(1.8); }
+}
+
+@keyframes spark {
+  0% { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))); }
+}
+
+@keyframes fall {
+  0% { transform: translateY(0) rotate(0); opacity: 1; }
+  100% { transform: translateY(calc(100vh + 60px)) rotate(420deg); opacity: 0.9; }
+}
+
 .theme-pudding {
   --bg: #a9d7f7;
   --bg-soft: #c9e9ff;
