@@ -68,6 +68,7 @@
         cardTarget: document.getElementById("cardTarget"),
       };
 
+      // 可替换素材：三套蛋糕主视觉，建议尺寸 440*300px，SVG/PNG 透明底格式。
       this.cakeStyles = {
         cream: "./assets/images/cake/cake-cream-default.svg",
         chocolate: "./assets/images/cake/cake-chocolate.svg",
