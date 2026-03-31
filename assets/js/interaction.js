@@ -7,8 +7,6 @@
     constructor() {
       this.elements = {
         body: document.body,
-        loaderScreen: document.getElementById("loaderScreen"),
-        customizeScreen: document.getElementById("customizeScreen"),
         customizeForm: document.getElementById("customizeForm"),
         nameInput: document.getElementById("nameInput"),
         ageInput: document.getElementById("ageInput"),
@@ -21,6 +19,7 @@
         avatarSketchCanvas: document.getElementById("avatarSketchCanvas"),
         cakeBaseImage: document.getElementById("cakeBaseImage"),
         cakeStage: document.getElementById("cakeStage"),
+        cakeDecorLayer: document.getElementById("cakeDecorLayer"),
         cakeCaption: document.getElementById("cakeCaption"),
         standardCandleLayer: document.getElementById("standardCandleLayer"),
         digitCandleLayer: document.getElementById("digitCandleLayer"),
@@ -47,8 +46,17 @@
         menuList: document.getElementById("menuList"),
         menuLockTip: document.getElementById("menuLockTip"),
         shareLinkOutput: document.getElementById("shareLinkOutput"),
+        copyInviteButton: document.getElementById("copyInviteButton"),
+        cakeStyleSwitches: document.getElementById("cakeStyleSwitches"),
+        decorPalette: document.getElementById("decorPalette"),
+        giftGrid: document.getElementById("giftGrid"),
+        guestbookForm: document.getElementById("guestbookForm"),
+        guestNickname: document.getElementById("guestNickname"),
+        guestMessage: document.getElementById("guestMessage"),
+        guestbookNotes: document.getElementById("guestbookNotes"),
+        eggList: document.getElementById("eggList"),
         helloKittyActor: document.getElementById("helloKittyActor"),
-        heroAndCake: document.getElementById("heroAndCake"),
+        floatingLayer: document.getElementById("floatingLayer"),
         audioLight: document.getElementById("audioLight"),
         audioBlow: document.getElementById("audioBlow"),
         audioOut: document.getElementById("audioOut"),
@@ -57,7 +65,38 @@
         audioCelebrate: document.getElementById("audioCelebrate"),
         audioAnimal: document.getElementById("audioAnimal"),
         audioConfetti: document.getElementById("audioConfetti"),
-        floatingLayer: document.getElementById("floatingLayer"),
+        cardTarget: document.getElementById("cardTarget"),
+      };
+
+      this.cakeStyles = {
+        cream: "./assets/images/cake/cake-cream-default.svg",
+        chocolate: "./assets/images/cake/cake-chocolate.svg",
+        mango: "./assets/images/cake/cake-mango.svg",
+      };
+
+      this.decorCatalog = [
+        { kind: "bow", label: "蝴蝶结" },
+        { kind: "cherry", label: "樱桃" },
+        { kind: "candy", label: "糖果" },
+        { kind: "strawberry", label: "草莓" },
+      ];
+
+      this.extraDecorCatalog = [
+        { kind: "heart", label: "爱心" },
+        { kind: "star", label: "星星" },
+      ];
+
+      this.giftPresets = {
+        bow: ["bow", "bow", "heart"],
+        candy: ["candy", "candy", "star"],
+        fruit: ["strawberry", "cherry", "heart"],
+      };
+
+      this.eggLabels = {
+        kitty: "连续点击 Hello Kitty 5 次",
+        cake: "双击蛋糕",
+        blank: "长按空白处",
+        name: "输入“永远可爱”",
       };
 
       this.state = {
@@ -68,16 +107,29 @@
         avatarSketch: "",
         cakeStyle: "cream",
         candles: [],
-        usingFallback: false,
         panel: "invite",
-        wish: window.localStorage.getItem(Utils.STORAGE_KEYS.wish) || "",
+        usingFallback: false,
         effectsEnabled: true,
+        performanceReduced: false,
+        wish: window.localStorage.getItem(Utils.STORAGE_KEYS.wish) || "",
+        guestbook: Utils.loadFromLocal(Utils.STORAGE_KEYS.guestbook, []),
+        eggs: Utils.loadFromLocal(Utils.STORAGE_KEYS.eggs, {
+          kitty: false,
+          cake: false,
+          blank: false,
+          name: false,
+        }),
+        decorations: [],
       };
 
       this.candleElements = new Map();
       this.nextExtinguishAt = 0;
       this.fallbackHold = { active: false, startedAt: 0, frame: 0 };
+      this.kittyCombo = { count: 0, time: 0 };
+      this.blankHoldTimer = 0;
+      this.activeDecorationId = null;
       this.lastBlowHintAt = 0;
+
       this.sound = new SoundController({
         light: this.elements.audioLight,
         blow: this.elements.audioBlow,
@@ -88,6 +140,7 @@
         animal: this.elements.audioAnimal,
         confetti: this.elements.audioConfetti,
       });
+
       this.detector = new BlowDetector({
         isMobile: Utils.isMobile(),
         onProgress: (progress, payload) => this.updateAirflow(progress, payload),
@@ -100,12 +153,19 @@
     init() {
       this.bindEvents();
       this.restoreSharedState();
+      this.applyThemeClass();
       this.renderTitle();
+      this.renderCakeStyle();
       this.renderCandles();
+      this.renderDecorPalette();
+      this.renderDecorations();
+      this.renderGuestbook();
       this.renderWish();
-      this.updateShareLink();
+      this.renderEggList();
       this.updateDrawerView(this.state.panel);
       this.updateMenuState();
+      this.updateShareLink();
+      this.monitorPerformance();
 
       window.setTimeout(() => {
         this.setStage("customize");
@@ -117,6 +177,7 @@
       this.elements.themeSwitcher.addEventListener("click", (event) => this.handleThemeSelection(event));
       this.elements.avatarUploadButton.addEventListener("click", () => this.elements.avatarFileInput.click());
       this.elements.avatarFileInput.addEventListener("change", (event) => this.handleAvatarFile(event));
+      this.elements.nameInput.addEventListener("input", () => this.handleNameEgg());
       this.elements.startMicButton.addEventListener("click", () => this.startWishByMicrophone());
       this.elements.forceFallbackButton.addEventListener("click", () => this.enableFallbackMode("已切换到长按吹烛模式，长按蛋糕上的蜡烛区域即可吹灭。"));
       this.elements.resetCandlesButton.addEventListener("click", () => this.resetCandles());
@@ -124,18 +185,29 @@
       this.elements.musicToggle.addEventListener("click", () => this.toggleMusic());
       this.elements.trackToggle.addEventListener("click", () => this.switchCelebrationTrack());
       this.elements.effectToggle.addEventListener("click", () => this.toggleEffects());
-      this.elements.saveCardButton.addEventListener("click", () => this.showToast("贺卡生成功能会在后续提交中完成。"));
+      this.elements.saveCardButton.addEventListener("click", () => this.generateCard());
       this.elements.saveWishButton.addEventListener("click", () => this.saveWish());
       this.elements.closeWishButton.addEventListener("click", () => this.closeWishModal());
       this.elements.menuList.addEventListener("click", (event) => this.handleMenuClick(event));
-      this.elements.helloKittyActor.addEventListener("click", () => this.animateAnimal(this.elements.helloKittyActor, "Hello Kitty在给你打气～"));
+      this.elements.copyInviteButton.addEventListener("click", () => this.copyInvite());
+      this.elements.cakeStyleSwitches.addEventListener("click", (event) => this.handleCakeStyleSwitch(event));
+      this.elements.decorPalette.addEventListener("click", (event) => this.handleDecorPaletteClick(event));
+      this.elements.giftGrid.addEventListener("click", (event) => this.handleGiftSelect(event));
+      this.elements.guestbookForm.addEventListener("submit", (event) => this.handleGuestbookSubmit(event));
+      this.elements.helloKittyActor.addEventListener("click", () => this.handleKittyTap());
+
       document.querySelectorAll(".animal-card, .pet-preview").forEach((button) => {
-        button.addEventListener("click", () => this.animateAnimal(button, "小伙伴正在摇尾巴为你欢呼～"));
+        button.addEventListener("click", () => this.animateAnimal(button));
       });
 
-      this.elements.cakeStage.addEventListener("pointerdown", (event) => this.handleFallbackPointerDown(event));
-      window.addEventListener("pointerup", () => this.stopFallbackHold());
-      window.addEventListener("pointercancel", () => this.stopFallbackHold());
+      this.elements.cakeStage.addEventListener("pointerdown", (event) => this.handleCakePointerDown(event));
+      this.elements.cakeStage.addEventListener("dblclick", () => this.unlockEgg("cake", "双击蛋糕彩蛋触发啦，糖果雨正在掉落。", true));
+      window.addEventListener("pointermove", (event) => this.handlePointerMove(event));
+      window.addEventListener("pointerup", () => this.handlePointerUp());
+      window.addEventListener("pointercancel", () => this.handlePointerUp());
+      window.addEventListener("pointerdown", (event) => this.handleBlankHoldStart(event));
+      window.addEventListener("pointerup", () => this.cancelBlankHold());
+      window.addEventListener("pointercancel", () => this.cancelBlankHold());
       window.addEventListener("pointermove", (event) => this.handlePointerTrail(event));
       window.addEventListener("click", (event) => this.spawnFirework(event.clientX, event.clientY));
     }
@@ -151,14 +223,34 @@
       this.state.theme = shared.t || "kitty";
       this.state.avatarSketch = shared.av || "";
       this.state.wish = shared.w || this.state.wish;
+      this.state.cakeStyle = shared.cs || "cream";
+      this.state.guestbook = Array.isArray(shared.g) ? shared.g.slice(0, 24) : this.state.guestbook;
+      this.state.decorations = Array.isArray(shared.d) ? shared.d.slice(0, 24) : [];
+      this.state.eggs = Object.assign({}, this.state.eggs, shared.eg || {});
 
       this.elements.nameInput.value = this.state.name;
       this.elements.ageInput.value = this.state.age;
-      this.applyThemeClass();
 
       if (this.state.avatarSketch) {
         this.elements.avatarPreview.src = this.state.avatarSketch;
       }
+    }
+
+    syncSharedState() {
+      const shared = {
+        n: this.state.name,
+        a: this.state.age,
+        t: this.state.theme,
+        av: this.state.avatarSketch,
+        w: this.state.wish,
+        cs: this.state.cakeStyle,
+        g: this.state.guestbook,
+        d: this.state.decorations,
+        eg: this.state.eggs,
+      };
+
+      history.replaceState(null, "", Utils.encodeHashState(shared));
+      this.updateShareLink();
     }
 
     setStage(stage) {
@@ -210,9 +302,28 @@
       this.elements.heroTitle.innerHTML = this.state.name
         ? "HAPPY BIRTHDAY!<br>" + this.state.name.toUpperCase()
         : "HAPPY BIRTHDAY!<br>HELLO KITTY";
+
       this.elements.heroSubtitle.textContent = this.state.name
         ? "祝" + this.state.name + "生日快乐，快把蜡烛一根根点亮吧。"
         : "祝你今天也像蜡笔云朵一样软乎乎地发光。";
+    }
+
+    handleNameEgg() {
+      if (Utils.sanitizeName(this.elements.nameInput.value) === "永远可爱") {
+        this.unlockEgg("name", "限定装饰彩蛋已经解锁，蛋糕 DIY 面板里会出现额外素材。", false);
+      }
+    }
+
+    handleKittyTap() {
+      const now = performance.now();
+      this.kittyCombo.count = now - this.kittyCombo.time < 1600 ? this.kittyCombo.count + 1 : 1;
+      this.kittyCombo.time = now;
+      this.animateAnimal(this.elements.helloKittyActor, "Hello Kitty在给你打气～");
+
+      if (this.kittyCombo.count >= 5) {
+        this.kittyCombo.count = 0;
+        this.unlockEgg("kitty", "Hello Kitty 专属舞蹈彩蛋触发啦。", true);
+      }
     }
 
     buildCandles() {
@@ -228,7 +339,7 @@
           x: position,
           y: 68,
           color: colors[index],
-          lightRank: lightingOrder.indexOf(index),
+          lightRank: lightingOrder.indexOf(index) + 4,
           blowRank: Math.abs(position - 50),
           lit: false,
           out: false,
@@ -393,6 +504,7 @@
       if (payload && payload.likelyBlow) {
         this.elements.airflowFill.style.background = "linear-gradient(90deg, #ff8b6c 0%, #ffd468 55%, #9be59a 100%)";
         this.elements.body.classList.add("is-blowing");
+
         if (value < 0.72 && performance.now() - this.lastBlowHintAt > 800) {
           this.lastBlowHintAt = performance.now();
           this.elements.statusCopy.textContent = "再用力一点呀～";
@@ -452,6 +564,7 @@
 
     finishCeremony() {
       this.detector.stop();
+      this.stopFallbackHold();
       this.elements.blackoutLayer.classList.add("is-active");
       this.elements.statusCopy.textContent = "白烟还在轻轻飘起，狂欢马上开始。";
       this.updateAirflow(0, { likelyBlow: false });
@@ -480,15 +593,20 @@
       this.showToast("蜡烛已经重新准备好了，再点亮一次吧。", true);
     }
 
-    handleFallbackPointerDown(event) {
-      if (!this.state.usingFallback || this.state.stage !== "wish") {
+    handleCakePointerDown(event) {
+      const decorItem = event.target.closest(".cake-decor-item");
+      if (decorItem && this.state.stage === "celebrate") {
+        event.preventDefault();
+        this.activeDecorationId = decorItem.dataset.decorId;
         return;
       }
 
-      if (!event.target.closest(".cake-stage, .candle")) {
-        return;
+      if (this.state.usingFallback && this.state.stage === "wish") {
+        this.startFallbackHold(event);
       }
+    }
 
+    startFallbackHold(event) {
       event.preventDefault();
       this.sound.playBlow();
       this.fallbackHold.active = true;
@@ -525,6 +643,29 @@
       }
     }
 
+    handlePointerMove(event) {
+      if (this.activeDecorationId && this.state.stage === "celebrate") {
+        const point = Utils.normalizePosition(event.clientX, event.clientY, this.elements.cakeStage);
+        const decoration = this.state.decorations.find((item) => item.id === this.activeDecorationId);
+        if (!decoration) {
+          return;
+        }
+
+        decoration.x = point.x;
+        decoration.y = point.y;
+        this.renderDecorations();
+      }
+    }
+
+    handlePointerUp() {
+      if (this.activeDecorationId) {
+        this.activeDecorationId = null;
+        this.syncSharedState();
+      }
+
+      this.stopFallbackHold();
+    }
+
     updateMenuState() {
       const unlocked = this.state.stage === "celebrate";
       this.elements.menuList.querySelectorAll(".menu-button").forEach((button) => {
@@ -556,16 +697,137 @@
       });
     }
 
-    async handleAvatarFile(event) {
-      const file = event.target.files && event.target.files[0];
-      if (!file) {
+    copyInvite() {
+      Utils.copyText(this.elements.shareLinkOutput.value).then(() => {
+        this.showToast("派对链接已经复制好了，快发给朋友吧。", true);
+      }).catch(() => {
+        this.showToast("复制失败了，请手动复制上面的链接。", true);
+      });
+    }
+
+    updateShareLink() {
+      this.elements.shareLinkOutput.value = window.location.href;
+    }
+
+    renderCakeStyle() {
+      this.elements.cakeBaseImage.src = this.cakeStyles[this.state.cakeStyle] || this.cakeStyles.cream;
+      this.elements.cakeStyleSwitches.querySelectorAll("button").forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.style === this.state.cakeStyle);
+      });
+    }
+
+    handleCakeStyleSwitch(event) {
+      const button = event.target.closest("button[data-style]");
+      if (!button) {
         return;
       }
 
-      const dataUrl = await Utils.fileToDataUrl(file);
-      this.state.avatarSketch = await Utils.sketchAvatar(dataUrl, this.elements.avatarSketchCanvas, this.state.theme);
-      this.elements.avatarPreview.src = this.state.avatarSketch;
+      this.state.cakeStyle = button.dataset.style;
+      this.renderCakeStyle();
       this.syncSharedState();
+    }
+
+    renderDecorPalette() {
+      const items = this.state.eggs.name ? this.decorCatalog.concat(this.extraDecorCatalog) : this.decorCatalog;
+      this.elements.decorPalette.innerHTML = "";
+
+      items.forEach((item) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "rough-button decor-token";
+        button.dataset.kind = item.kind;
+        button.textContent = item.label;
+        this.elements.decorPalette.appendChild(button);
+      });
+    }
+
+    handleDecorPaletteClick(event) {
+      const button = event.target.closest("button[data-kind]");
+      if (!button) {
+        return;
+      }
+
+      if (this.state.stage !== "celebrate") {
+        this.showToast("蛋糕 DIY 会在吹完蜡烛后解锁。", true);
+        return;
+      }
+
+      this.addDecoration(button.dataset.kind);
+    }
+
+    addDecoration(kind) {
+      this.state.decorations.push({
+        id: Utils.uid("decor"),
+        kind: kind,
+        x: Utils.randomBetween(0.24, 0.76),
+        y: Utils.randomBetween(0.34, 0.78),
+      });
+      this.renderDecorations();
+      this.syncSharedState();
+    }
+
+    renderDecorations() {
+      this.elements.cakeDecorLayer.innerHTML = "";
+
+      this.state.decorations.forEach((item) => {
+        const node = document.createElement("button");
+        node.type = "button";
+        node.className = "cake-decor-item decor-" + item.kind;
+        node.dataset.decorId = item.id;
+        node.style.left = String(item.x * 100) + "%";
+        node.style.top = String(item.y * 100) + "%";
+        node.innerHTML = "<span></span>";
+        this.elements.cakeDecorLayer.appendChild(node);
+      });
+    }
+
+    handleGiftSelect(event) {
+      const button = event.target.closest("button[data-gift]");
+      if (!button) {
+        return;
+      }
+
+      if (this.state.stage !== "celebrate") {
+        this.showToast("派对礼盒会在吹完蜡烛后解锁。", true);
+        return;
+      }
+
+      const preset = this.giftPresets[button.dataset.gift] || [];
+      preset.forEach((kind) => this.addDecoration(kind));
+      this.showToast("礼盒装饰已经撒到蛋糕上啦。", true);
+    }
+
+    handleGuestbookSubmit(event) {
+      event.preventDefault();
+      const nickname = Utils.sanitizeName(this.elements.guestNickname.value || "小伙伴");
+      const message = (this.elements.guestMessage.value || "").trim().slice(0, 80);
+      if (!message) {
+        this.showToast("写一句祝福再贴便签吧。", true);
+        return;
+      }
+
+      this.state.guestbook.unshift({
+        id: Utils.uid("note"),
+        nickname: nickname || "小伙伴",
+        message: message,
+      });
+      this.state.guestbook = this.state.guestbook.slice(0, 18);
+      Utils.saveToLocal(Utils.STORAGE_KEYS.guestbook, this.state.guestbook);
+      this.renderGuestbook();
+      this.syncSharedState();
+      this.elements.guestbookForm.reset();
+      this.showToast("祝福便签已经贴到留言墙啦。", true);
+    }
+
+    renderGuestbook() {
+      this.elements.guestbookNotes.innerHTML = "";
+
+      this.state.guestbook.forEach((note) => {
+        const item = document.createElement("article");
+        item.className = "guest-note rough-card";
+        item.innerHTML = "<strong>" + note.nickname + "</strong><p>" + note.message + "</p>";
+        this.elements.guestbookNotes.appendChild(item);
+      });
     }
 
     renderWish() {
@@ -588,31 +850,90 @@
       this.showToast("愿望已经悄悄保存在这台设备里。", true);
     }
 
-    syncSharedState() {
-      const shared = {
-        n: this.state.name,
-        a: this.state.age,
-        t: this.state.theme,
-        av: this.state.avatarSketch,
-        w: this.state.wish,
-      };
-      const encoded = Utils.encodeHashState(shared);
-      history.replaceState(null, "", encoded);
-      this.updateShareLink();
+    renderEggList() {
+      this.elements.eggList.querySelectorAll("li").forEach((item) => {
+        const key = item.dataset.egg;
+        const unlocked = Boolean(this.state.eggs[key]);
+        item.classList.toggle("is-done", unlocked);
+        item.textContent = this.eggLabels[key] + (unlocked ? "：已解锁" : "：待解锁");
+      });
     }
 
-    updateShareLink() {
-      this.elements.shareLinkOutput.value = window.location.href;
+    unlockEgg(key, message, celebrate) {
+      if (this.state.eggs[key]) {
+        return;
+      }
+
+      this.state.eggs[key] = true;
+      Utils.saveToLocal(Utils.STORAGE_KEYS.eggs, this.state.eggs);
+      this.renderEggList();
+      this.renderDecorPalette();
+      this.syncSharedState();
+      this.showToast(message, true);
+
+      if (celebrate) {
+        this.elements.helloKittyActor.classList.add("is-dancing");
+        window.setTimeout(() => this.elements.helloKittyActor.classList.remove("is-dancing"), 1400);
+        this.spawnCelebrationRain();
+      }
+    }
+
+    animateAnimal(element, message) {
+      const animal = element.dataset.animal || "friend";
+      const messages = {
+        kitty: "Hello Kitty在给你打气～",
+        bear: "小熊举起了生日手牌～",
+        puppy: "小狗已经兴奋地开始摇尾巴啦～",
+        cat: "小猫正歪着头等你继续点蜡烛。",
+        bunny: "小兔在原地蹦了两下，超期待许愿时刻。",
+      };
+
+      element.classList.remove("is-bouncing");
+      window.requestAnimationFrame(() => {
+        element.classList.add("is-bouncing");
+      });
+      this.sound.playAnimal();
+      this.showToast(message || messages[animal] || "小伙伴在为你欢呼。", false);
+    }
+
+    handleBlankHoldStart(event) {
+      const interactive = event.target.closest("button, input, textarea, .candle, .cake-stage, .rough-button");
+      if (interactive) {
+        return;
+      }
+
+      this.blankHoldTimer = window.setTimeout(() => {
+        this.unlockEgg("blank", "长按空白处彩蛋触发，掌声和爱心一起落下来啦。", true);
+      }, 900);
+    }
+
+    cancelBlankHold() {
+      window.clearTimeout(this.blankHoldTimer);
+      this.blankHoldTimer = 0;
+    }
+
+    async handleAvatarFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) {
+        return;
+      }
+
+      const dataUrl = await Utils.fileToDataUrl(file);
+      this.state.avatarSketch = await Utils.sketchAvatar(dataUrl, this.elements.avatarSketchCanvas, this.state.theme);
+      this.elements.avatarPreview.src = this.state.avatarSketch;
+      this.syncSharedState();
     }
 
     toggleMusic() {
       const enabled = this.sound.toggleMusic();
       this.elements.musicToggle.textContent = enabled ? "暂停BGM" : "播放BGM";
-      if (enabled && this.state.stage !== "celebrate") {
-        this.sound.startAmbient();
-      }
+
       if (enabled && this.state.stage === "celebrate") {
         this.sound.startCelebrateTrack();
+      }
+
+      if (enabled && this.state.stage !== "celebrate") {
+        this.sound.startAmbient();
       }
     }
 
@@ -626,17 +947,8 @@
       this.elements.effectToggle.textContent = this.state.effectsEnabled ? "关闭特效" : "开启特效";
     }
 
-    animateAnimal(element, message) {
-      element.classList.remove("is-bouncing");
-      window.requestAnimationFrame(() => {
-        element.classList.add("is-bouncing");
-      });
-      this.sound.playAnimal();
-      this.showToast(message, false);
-    }
-
     handlePointerTrail(event) {
-      if (!this.state.effectsEnabled) {
+      if (!this.state.effectsEnabled || this.state.performanceReduced) {
         return;
       }
 
@@ -649,7 +961,7 @@
     }
 
     spawnFirework(clientX, clientY) {
-      if (!this.state.effectsEnabled || this.state.stage === "loading") {
+      if (!this.state.effectsEnabled || this.state.performanceReduced || this.state.stage === "loading") {
         return;
       }
 
@@ -665,20 +977,71 @@
       }
     }
 
-    spawnCelebrationRain() {
-      if (!this.state.effectsEnabled) {
+    spawnCelebrationRain(colors) {
+      if (!this.state.effectsEnabled || this.state.performanceReduced) {
         return;
       }
 
+      const palette = colors || ["#ff8bb3", "#ffd468", "#9edaf6", "#ffe7f0"];
       for (let index = 0; index < 28; index += 1) {
         const piece = document.createElement("span");
         piece.className = "confetti-piece";
         piece.style.left = String(Utils.randomBetween(0, window.innerWidth)) + "px";
         piece.style.animationDelay = String(Utils.randomBetween(0, 0.8)) + "s";
-        piece.style.background = ["#ff8bb3", "#ffd468", "#9edaf6", "#ffe7f0"][index % 4];
+        piece.style.background = palette[index % palette.length];
         this.elements.floatingLayer.appendChild(piece);
         window.setTimeout(() => piece.remove(), 4200);
       }
+    }
+
+    async generateCard() {
+      if (!window.html2canvas) {
+        this.showToast("贺卡库加载失败了，请稍后重试。", true);
+        return;
+      }
+
+      try {
+        const canvas = await window.html2canvas(this.elements.cardTarget, {
+          scale: 2,
+          backgroundColor: null,
+          useCORS: true,
+          ignoreElements: (element) => element.id === "toastShell" || element.id === "promptModal",
+        });
+        Utils.downloadDataUrl((this.state.name || "birthday") + "-card.png", canvas.toDataURL("image/png"));
+        this.showToast("生日贺卡已经生成并开始下载啦。", true);
+      } catch (error) {
+        this.showToast("贺卡生成失败了，请稍后重试。", true);
+      }
+    }
+
+    monitorPerformance() {
+      let frames = 0;
+      let start = performance.now();
+
+      const sample = () => {
+        frames += 1;
+        const now = performance.now();
+        const elapsed = now - start;
+
+        if (elapsed > 2000) {
+          const fps = frames / (elapsed / 1000);
+          if (fps < 42 && !this.state.performanceReduced) {
+            this.state.performanceReduced = true;
+            this.state.effectsEnabled = false;
+            this.elements.body.classList.add("reduce-motion");
+            this.elements.effectToggle.textContent = "开启特效";
+            this.showToast("检测到设备性能偏低，已自动简化特效。", true);
+            return;
+          }
+
+          frames = 0;
+          start = now;
+        }
+
+        requestAnimationFrame(sample);
+      };
+
+      requestAnimationFrame(sample);
     }
 
     showToast(message, emphatic) {

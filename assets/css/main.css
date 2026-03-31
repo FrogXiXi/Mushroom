@@ -633,9 +633,179 @@ body:not([data-stage="loading"]) .loader-screen {
   top: 22px;
 }
 
+.rough-button.is-active {
+  background: linear-gradient(180deg, #ffd9e6 0%, #ffb7d0 100%);
+}
+
 .menu-button:disabled {
   opacity: 0.56;
   cursor: not-allowed;
+}
+
+.decor-token {
+  min-width: 86px;
+}
+
+.egg-list li {
+  padding: 12px 14px;
+  border: var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.egg-list li.is-done {
+  background: linear-gradient(180deg, #fff5d4 0%, #ffe49f 100%);
+}
+
+.guest-note {
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #fff7cf 0%, #ffe6aa 100%);
+  transform: rotate(-1deg);
+}
+
+.guest-note:nth-child(even) {
+  transform: rotate(1deg);
+}
+
+.guest-note p,
+.guest-note strong {
+  margin: 0;
+}
+
+.guest-note p {
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.cake-decor-item {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  padding: 0;
+}
+
+.cake-decor-item span {
+  position: absolute;
+  inset: 0;
+}
+
+.decor-bow span::before,
+.decor-bow span::after,
+.decor-heart span::before,
+.decor-heart span::after,
+.decor-star span::before,
+.decor-star span::after,
+.decor-candy span::before,
+.decor-candy span::after,
+.decor-cherry span::before,
+.decor-strawberry span::before {
+  content: "";
+  position: absolute;
+}
+
+.decor-bow span::before,
+.decor-bow span::after {
+  top: 12px;
+  width: 20px;
+  height: 20px;
+  border: var(--line);
+  background: #ff9ebf;
+  border-radius: 60% 40% 60% 40%;
+}
+
+.decor-bow span::before {
+  left: 3px;
+}
+
+.decor-bow span::after {
+  right: 3px;
+}
+
+.decor-bow span {
+  border-radius: 50%;
+}
+
+.decor-bow span {
+  box-shadow: inset 0 0 0 12px rgba(255, 183, 208, 0), 0 0 0 0 transparent;
+}
+
+.decor-bow span::marker {
+  content: "";
+}
+
+.decor-cherry span::before,
+.decor-cherry span::after {
+  bottom: 8px;
+  width: 16px;
+  height: 16px;
+  border: var(--line);
+  background: #ff7a88;
+  border-radius: 50%;
+}
+
+.decor-cherry span::before {
+  left: 10px;
+}
+
+.decor-cherry span::after {
+  right: 10px;
+}
+
+.decor-candy span::before {
+  inset: 12px 10px;
+  border: var(--line);
+  border-radius: 16px;
+  background: linear-gradient(90deg, #9edaf6 0%, #ffb7d0 100%);
+}
+
+.decor-candy span::after {
+  inset: 16px 2px 16px auto;
+  width: 44px;
+  border-top: var(--line);
+  border-bottom: var(--line);
+  transform: translateX(-8px);
+}
+
+.decor-strawberry span::before {
+  inset: 10px 12px 6px;
+  border: var(--line);
+  background: #ff7a88;
+  border-radius: 44% 44% 50% 50%;
+}
+
+.decor-heart span::before,
+.decor-heart span::after {
+  top: 12px;
+  width: 16px;
+  height: 24px;
+  border: var(--line);
+  background: #ff9ebf;
+  border-radius: 50px 50px 0 0;
+}
+
+.decor-heart span::before {
+  left: 11px;
+  transform: rotate(-45deg);
+  transform-origin: right bottom;
+}
+
+.decor-heart span::after {
+  right: 11px;
+  transform: rotate(45deg);
+  transform-origin: left bottom;
+}
+
+.decor-star span::before {
+  inset: 10px;
+  border: var(--line);
+  background: #ffd468;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 92%, 50% 71%, 21% 92%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.hero-character.is-dancing {
+  animation: kitty-dance 1.3s ease;
 }
 
 .candle {
@@ -816,6 +986,14 @@ body.is-blowing .candle.is-lit {
   0% { transform: translateY(0) rotate(0); }
   45% { transform: translateY(-10px) rotate(-2deg); }
   100% { transform: translateY(0) rotate(0); }
+}
+
+@keyframes kitty-dance {
+  0%,
+  100% { transform: rotate(0) translateY(0); }
+  25% { transform: rotate(-6deg) translateY(-10px); }
+  50% { transform: rotate(6deg) translateY(0); }
+  75% { transform: rotate(-4deg) translateY(-6px); }
 }
 
 @keyframes fade-burst {
