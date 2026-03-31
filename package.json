@@ -1,0 +1,13 @@
+{
+  "name": "zzhappy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "蜡笔手绘生日纪念页，本地保存愿望、点名献灯并导出纪念卡。",
+  "scripts": {
+    "dev": "serve . -l 4173",
+    "start": "serve . -l 4173"
+  },
+  "devDependencies": {
+    "serve": "^14.2.4"
+  }
+}

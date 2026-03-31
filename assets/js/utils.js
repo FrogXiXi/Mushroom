@@ -1,6 +1,9 @@
 (function () {
   const STORAGE_KEYS = {
+    profile: "zzhappy:profile",
     wish: "zzhappy:wish",
+    wishes: "zzhappy:wishes",
+    dedications: "zzhappy:dedications",
     guestbook: "zzhappy:guestbook",
     eggs: "zzhappy:eggs",
   };
@@ -175,6 +178,15 @@
     document.body.removeChild(anchor);
   }
 
+  function downloadTextFile(filename, text, mimeType) {
+    const blob = new Blob([text], { type: mimeType || "text/plain;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(blob);
+    downloadDataUrl(filename, objectUrl);
+    window.setTimeout(function () {
+      URL.revokeObjectURL(objectUrl);
+    }, 1000);
+  }
+
   function normalizePosition(clientX, clientY, element) {
     const rect = element.getBoundingClientRect();
     return {
@@ -202,6 +214,7 @@
     fileToDataUrl: fileToDataUrl,
     sketchAvatar: sketchAvatar,
     downloadDataUrl: downloadDataUrl,
+    downloadTextFile: downloadTextFile,
     normalizePosition: normalizePosition,
     sanitizeName: sanitizeName,
   };
