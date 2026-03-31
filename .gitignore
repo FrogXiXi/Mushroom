@@ -1,0 +1,22 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Temp files
+*.tmp
+*.temp
+
+# IDE
+.idea/
+
+# Local environment
+.env
+.env.*
+
+# Archive
+*.zip
+*.7z
