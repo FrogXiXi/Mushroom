@@ -927,6 +927,14 @@ body.is-blowing .candle.is-lit {
   animation: candle-sway 220ms infinite alternate ease-in-out;
 }
 
+body.is-blowing .hero-character,
+body.is-blowing .animal-card,
+body.is-blowing .scene-decor,
+body.is-blowing .banner-left,
+body.is-blowing .banner-right {
+  animation: breeze 300ms infinite alternate ease-in-out;
+}
+
 .animal-card.is-bouncing,
 .hero-character.is-bouncing,
 .pet-preview.is-bouncing {
@@ -980,6 +988,11 @@ body.is-blowing .candle.is-lit {
 @keyframes candle-sway {
   0% { transform: translate(-50%, -50%) rotate(-2deg); }
   100% { transform: translate(-50%, -50%) rotate(2deg); }
+}
+
+@keyframes breeze {
+  0% { transform: rotate(-2deg) translateY(0); }
+  100% { transform: rotate(2deg) translateY(-3px); }
 }
 
 @keyframes hop {
