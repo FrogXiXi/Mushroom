@@ -140,6 +140,13 @@ img {
   backdrop-filter: blur(14px);
 }
 
+.prompt-modal,
+.wish-modal {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease;
+}
+
 .loader-card,
 .customize-panel,
 .modal-card {

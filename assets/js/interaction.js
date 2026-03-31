@@ -454,11 +454,13 @@
       this.elements.modeTag.textContent = "准备吹蜡烛";
       this.elements.statusCopy.textContent = "对准麦克风吹气，或者切换成长按吹烛模式。";
       this.elements.promptCopy.textContent = "✨ 愿望默念好了吗？对着麦克风用力吹一口气，熄灭蜡烛吧～";
+      this.elements.promptModal.setAttribute("aria-hidden", "false");
       this.elements.promptModal.classList.add("is-open");
     }
 
     startWishByMicrophone() {
       this.sound.unlock();
+      this.elements.promptModal.setAttribute("aria-hidden", "true");
       this.elements.promptModal.classList.remove("is-open");
       this.state.usingFallback = false;
       this.detector.start();
@@ -487,6 +489,7 @@
 
       this.state.usingFallback = true;
       this.detector.stop();
+      this.elements.promptModal.setAttribute("aria-hidden", "true");
       this.elements.promptModal.classList.remove("is-open");
       this.elements.modeTag.textContent = "长按吹烛模式";
       this.elements.statusCopy.textContent = message || "长按蜡烛区域，进度条满后会熄灭蜡烛。";
@@ -590,7 +593,9 @@
       this.renderCandles();
       this.sound.startAmbient();
       this.setStage("lighting");
+      this.elements.promptModal.setAttribute("aria-hidden", "true");
       this.elements.promptModal.classList.remove("is-open");
+      this.elements.wishModal.setAttribute("aria-hidden", "true");
       this.elements.wishModal.classList.remove("is-open");
       this.showToast("蜡烛已经重新准备好了，再点亮一次吧。", true);
     }
@@ -842,10 +847,12 @@
     }
 
     openWishModal() {
+      this.elements.wishModal.setAttribute("aria-hidden", "false");
       this.elements.wishModal.classList.add("is-open");
     }
 
     closeWishModal() {
+      this.elements.wishModal.setAttribute("aria-hidden", "true");
       this.elements.wishModal.classList.remove("is-open");
     }
 
