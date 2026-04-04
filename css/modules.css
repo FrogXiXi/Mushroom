@@ -183,8 +183,8 @@
   position: absolute;
   top: 10%;
   right: 3%;
-  width: clamp(25px, 6vw, 40px);
-  max-height: 40%;
+  width: clamp(48px, 12vw, 80px);
+  max-height: 50%;
   cursor: grab;
   z-index: 3;
   pointer-events: auto;
@@ -632,7 +632,7 @@
   z-index: 12;
 }
 .ceremony-overlay.dark {
-  background: rgba(10, 8, 14, 0.82);
+  background: rgba(18, 14, 26, 0.58);
 }
 .ceremony-wish-text {
   position: absolute;
