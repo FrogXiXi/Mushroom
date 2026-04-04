@@ -17,6 +17,7 @@ const CeremonyModule = {
   _analyser: null,
   _stream: null,
   _animationFrame: 0,
+  _blowDetectionFrame: 0,
   _cleanupFns: [],
 
   async init() {
@@ -331,11 +332,21 @@ const CeremonyModule = {
 
   _requestMic() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this._micMode = false;
       this.hintEl.textContent = '点击蜡烛火焰熄灭蜡烛';
       return;
     }
 
-    navigator.mediaDevices.getUserMedia({ audio: true })
+    const constraints = {
+      audio: {
+        channelCount: { ideal: 1 },
+        echoCancellation: { ideal: false },
+        noiseSuppression: { ideal: false },
+        autoGainControl: { ideal: false },
+      },
+    };
+
+    navigator.mediaDevices.getUserMedia(constraints)
       .then((stream) => {
         this._micMode = true;
         this._stream = stream;
@@ -349,40 +360,113 @@ const CeremonyModule = {
   },
 
   _startBlowDetection(stream) {
-    this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      this._micMode = false;
+      this.hintEl.textContent = '点击蜡烛火焰熄灭蜡烛';
+      return;
+    }
+
+    this._stopMicCapture();
+    this._stream = stream;
+    this._audioCtx = new AudioContextClass();
     const source = this._audioCtx.createMediaStreamSource(stream);
     this._analyser = this._audioCtx.createAnalyser();
-    this._analyser.fftSize = 256;
+    this._analyser.fftSize = 512;
+    this._analyser.smoothingTimeConstant = 0.18;
     source.connect(this._analyser);
 
-    const data = new Uint8Array(this._analyser.frequencyBinCount);
-    let blowStart = 0;
+    const frequencyData = new Uint8Array(this._analyser.frequencyBinCount);
+    const waveformData = new Uint8Array(this._analyser.fftSize);
+    let baselineScore = 0;
+    let baselineBass = 0;
+    let warmupFrames = 0;
+    let blowFrames = 0;
 
     const check = () => {
-      if (this._allBlown) {
-        stream.getTracks().forEach(t => t.stop());
+      if (this._allBlown || !this._analyser) {
+        this._stopMicCapture();
         return;
       }
-      this._analyser.getByteFrequencyData(data);
-      const avg = data.reduce((a, b) => a + b, 0) / data.length;
 
-      if (avg > 40) {
-        if (!blowStart) blowStart = Date.now();
-        if (Date.now() - blowStart > 500) {
-          this._candles.forEach((candle) => {
-            candle.blown = true;
-          });
-          this._draw();
-          this._onAllBlown();
-          stream.getTracks().forEach(t => t.stop());
-          return;
-        }
-      } else {
-        blowStart = 0;
+      this._analyser.getByteFrequencyData(frequencyData);
+      this._analyser.getByteTimeDomainData(waveformData);
+
+      const avgFrequency = frequencyData.reduce((sum, value) => sum + value, 0) / frequencyData.length;
+      const bassBins = Math.max(8, Math.floor(frequencyData.length * 0.08));
+      const bassEnergy = frequencyData.slice(0, bassBins).reduce((sum, value) => sum + value, 0) / bassBins;
+      let squareSum = 0;
+      let peak = 0;
+      for (let index = 0; index < waveformData.length; index += 1) {
+        const normalized = Math.abs(waveformData[index] - 128);
+        squareSum += normalized * normalized;
+        peak = Math.max(peak, normalized);
       }
-      requestAnimationFrame(check);
+      const rms = Math.sqrt(squareSum / waveformData.length);
+      const blowScore = rms * 1.35 + peak * 0.65 + bassEnergy * 0.4 + avgFrequency * 0.25;
+
+      if (warmupFrames < 10) {
+        baselineScore = warmupFrames === 0 ? blowScore : baselineScore * 0.72 + blowScore * 0.28;
+        baselineBass = warmupFrames === 0 ? bassEnergy : baselineBass * 0.72 + bassEnergy * 0.28;
+        warmupFrames += 1;
+      } else {
+        baselineScore = baselineScore * 0.96 + blowScore * 0.04;
+        baselineBass = baselineBass * 0.96 + bassEnergy * 0.04;
+      }
+
+      const dynamicScoreThreshold = Math.max(20, baselineScore * 1.85);
+      const dynamicBassThreshold = Math.max(10, baselineBass * 1.6);
+      const burstDetected = blowScore >= dynamicScoreThreshold && (peak >= 16 || rms >= 9);
+      const sustainedDetected = blowScore >= Math.max(16, baselineScore * 1.45)
+        && bassEnergy >= dynamicBassThreshold
+        && rms >= 7;
+
+      if (burstDetected || sustainedDetected) {
+        blowFrames += 1;
+      } else {
+        blowFrames = Math.max(0, blowFrames - 1);
+      }
+
+      if (blowFrames >= 8) {
+        this._candles.forEach((candle) => {
+          candle.blown = true;
+        });
+        this._draw();
+        this._onAllBlown();
+        this._stopMicCapture();
+        return;
+      }
+
+      this._blowDetectionFrame = requestAnimationFrame(check);
     };
-    requestAnimationFrame(check);
+
+    const startDetection = () => {
+      this._blowDetectionFrame = requestAnimationFrame(check);
+    };
+
+    if (typeof this._audioCtx.resume === 'function' && this._audioCtx.state === 'suspended') {
+      this._audioCtx.resume().then(startDetection).catch(startDetection);
+      return;
+    }
+
+    startDetection();
+  },
+
+  _stopMicCapture(closeAudioContext = true) {
+    cancelAnimationFrame(this._blowDetectionFrame);
+    this._blowDetectionFrame = 0;
+
+    if (this._stream) {
+      this._stream.getTracks().forEach((track) => track.stop());
+      this._stream = null;
+    }
+
+    this._analyser = null;
+
+    if (closeAudioContext && this._audioCtx) {
+      this._audioCtx.close();
+      this._audioCtx = null;
+    }
   },
 
   _onAllBlown() {
@@ -409,14 +493,6 @@ const CeremonyModule = {
     cancelAnimationFrame(this._animationFrame);
     this._cleanupFns.forEach((cleanup) => cleanup());
     this._cleanupFns = [];
-    if (this._stream) {
-      this._stream.getTracks().forEach((track) => track.stop());
-      this._stream = null;
-    }
-    if (this._audioCtx) {
-      this._audioCtx.close();
-      this._audioCtx = null;
-    }
-    this._analyser = null;
+    this._stopMicCapture();
   },
 };
