@@ -1,0 +1,56 @@
+/* ===== 动画关键帧 ===== */
+
+/* 淡入 + 上移 */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* 呼吸缩放 */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* 蜡烛火苗晃动 */
+@keyframes flicker {
+  0%, 100% { transform: scaleY(1) rotate(0deg); }
+  25% { transform: scaleY(1.05) rotate(-2deg); }
+  50% { transform: scaleY(0.95) rotate(1deg); }
+  75% { transform: scaleY(1.02) rotate(-1deg); }
+}
+
+/* 轻微弹跳 */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* 颜色扩散 */
+@keyframes colorSpread {
+  0% { transform: scale(0.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+
+/* 选中放大 */
+@keyframes selectPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1.05); }
+}
+
+/* ===== 工具类动画 ===== */
+.anim-fade-in { animation: fadeIn 300ms ease forwards; }
+.anim-fade-in-up { animation: fadeInUp 500ms ease forwards; }
+.anim-fade-out { animation: fadeOut 300ms ease forwards; }
+.anim-breathe { animation: breathe 2s ease-in-out infinite; }
+.anim-flicker { animation: flicker 0.4s ease-in-out infinite; }
+.anim-bounce { animation: bounce 1.5s ease-in-out infinite; }

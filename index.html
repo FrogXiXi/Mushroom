@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>春尽夏生 · Happy Birthday</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+KuaiLe&family=Cookie&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/modules.css">
+  <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+  <div class="global-doodle-layer" aria-hidden="true">
+    <picture class="global-doodle global-doodle-1">
+      <source srcset="assets/images/style/doodles/doodle_01.webp" type="image/webp">
+      <img src="assets/images/style/doodles/doodle_01.png" alt="">
+    </picture>
+    <picture class="global-doodle global-doodle-2">
+      <source srcset="assets/images/style/doodles/doodle_05.webp" type="image/webp">
+      <img src="assets/images/style/doodles/doodle_05.png" alt="">
+    </picture>
+    <picture class="global-doodle global-doodle-3">
+      <source srcset="assets/images/style/doodles/doodle_08.webp" type="image/webp">
+      <img src="assets/images/style/doodles/doodle_08.png" alt="">
+    </picture>
+    <picture class="global-doodle global-doodle-4">
+      <source srcset="assets/images/style/doodles/flower.webp" type="image/webp">
+      <img src="assets/images/style/doodles/flower.png" alt="">
+    </picture>
+    <picture class="global-doodle global-doodle-5">
+      <source srcset="assets/images/style/doodles/heart.webp" type="image/webp">
+      <img src="assets/images/style/doodles/heart.png" alt="">
+    </picture>
+    <picture class="global-doodle global-doodle-6">
+      <source srcset="assets/images/style/doodles/star.webp" type="image/webp">
+      <img src="assets/images/style/doodles/star.png" alt="">
+    </picture>
+  </div>
+  <div id="app">
+    <!-- 模块1: 封面 -->
+    <section id="mod-cover" class="module active">
+      <div class="cover-bg"></div>
+      <div class="cover-content">
+        <div class="cover-doodles">
+          <img class="doodle doodle-tl" src="" alt="">
+          <img class="doodle doodle-tr" src="" alt="">
+          <img class="doodle doodle-bl" src="" alt="">
+          <img class="doodle doodle-br" src="" alt="">
+        </div>
+        <h1 class="cover-title" id="cover-title">春尽夏生</h1>
+        <p class="cover-subtitle" id="cover-subtitle">
+          To 寿星 · Happy Birthday · 2026.05.30
+        </p>
+        <button class="btn-primary cover-btn" id="cover-enter-btn">点击进入</button>
+      </div>
+    </section>
+
+    <!-- 模块2: 蛋糕胚选择 -->
+    <section id="mod-cake-select" class="module">
+      <div class="module-header">
+        <h2 class="module-title">选择蛋糕胚</h2>
+      </div>
+      <div class="cake-select-options">
+        <div class="cake-option selected" data-cake="single">
+          <div class="cake-option-img">
+            <picture>
+              <source srcset="assets/images/cake/bases/single/base.webp" type="image/webp">
+              <img src="assets/images/cake/bases/single/base.png" alt="单层蛋糕" draggable="false">
+            </picture>
+          </div>
+          <span class="cake-option-label">单层蛋糕</span>
+        </div>
+        <div class="cake-option" data-cake="double">
+          <div class="cake-option-img">
+            <picture>
+              <source srcset="assets/images/cake/bases/double/preview.webp" type="image/webp">
+              <img src="assets/images/cake/bases/double/preview.png" alt="双层蛋糕预览" draggable="false">
+            </picture>
+          </div>
+          <span class="cake-option-label">双层蛋糕</span>
+        </div>
+      </div>
+      <button class="btn-primary btn-next" id="cake-select-next">下一步</button>
+    </section>
+
+    <!-- 模块3: 奶油制作 -->
+    <section id="mod-cream-making" class="module">
+      <div class="module-header">
+        <h2 class="module-title">制作奶油</h2>
+      </div>
+      <div class="cream-making-area">
+        <canvas id="cream-canvas" width="800" height="600"></canvas>
+        <div class="egg-tool" id="egg-tool">
+          <picture>
+            <source srcset="assets/images/making/ingredients/eggs/whole.webp" type="image/webp">
+            <img src="assets/images/making/ingredients/eggs/whole.png" alt="鸡蛋" draggable="false">
+          </picture>
+        </div>
+        <div class="cream-bowl-area" id="cream-bowl-area">
+          <picture>
+            <source srcset="assets/images/making/containers/bowl/bowl.webp" type="image/webp">
+            <img src="assets/images/making/containers/bowl/bowl.png" alt="搅拌碗" class="bowl-img" draggable="false">
+          </picture>
+          <div class="cream-liquid" id="cream-liquid"></div>
+        </div>
+        <div class="mixer-tool" id="mixer-tool">
+          <picture>
+            <source srcset="assets/images/making/tools/mixer/mixer.webp" type="image/webp">
+            <img src="assets/images/making/tools/mixer/mixer.png" alt="搅拌器" draggable="false">
+          </picture>
+        </div>
+      </div>
+      <p class="cream-hint" id="cream-hint"></p>
+      <div class="color-picker" id="color-picker">
+        <!-- 色素瓶由 JS 动态生成 -->
+      </div>
+      <div class="cream-progress" id="cream-progress">
+        <div class="cream-progress-bar">
+          <div class="cream-progress-fill"></div>
+        </div>
+        <span class="cream-progress-text">打发进度: 0%</span>
+      </div>
+      <div class="cream-apply-stage hidden" id="cream-apply-stage">
+        <div class="cream-apply-preview" id="cream-apply-preview">
+          <canvas id="cream-apply-canvas" width="520" height="360"></canvas>
+          <div class="spatula-tool hidden" id="spatula-tool">
+            <picture>
+              <source srcset="assets/images/making/tools/spatula/spatula.webp" type="image/webp">
+              <img src="assets/images/making/tools/spatula/spatula.png" alt="抹刀" draggable="false">
+            </picture>
+          </div>
+        </div>
+        <div class="cream-cover-progress">
+          <div class="cream-progress-bar">
+            <div class="cream-progress-fill" id="cream-cover-fill"></div>
+          </div>
+          <span class="cream-progress-text" id="cream-cover-text">抹面进度: 0%</span>
+        </div>
+      </div>
+      <button class="btn-primary btn-next hidden" id="cream-making-next">完成抹面，开始装饰</button>
+    </section>
+
+    <!-- 模块4: 抹奶油 & 涂鸦 -->
+    <section id="mod-cream-paint" class="module">
+      <div class="module-header">
+        <h2 class="module-title">抹奶油 & 涂鸦</h2>
+      </div>
+      <div class="paint-area">
+        <canvas id="paint-canvas" width="800" height="800"></canvas>
+      </div>
+      <p class="paint-hint">像画画模拟器一样调整颜色、透明度和笔刷，直接在整个蛋糕形状上作画。</p>
+      <div class="paint-tools">
+        <div class="paint-color-picker" id="paint-color-picker"></div>
+        <div class="brush-size-slider">
+          <label>笔刷大小</label>
+          <input type="range" id="brush-size" min="10" max="50" value="20">
+        </div>
+        <div class="opacity-slider">
+          <label>透明度</label>
+          <input type="range" id="paint-opacity" min="10" max="100" value="80">
+        </div>
+        <button class="btn-tool" id="paint-undo">撤销</button>
+        <button class="btn-tool" id="paint-clear">清空</button>
+      </div>
+      <button class="btn-primary btn-next" id="cream-paint-next">下一步</button>
+    </section>
+
+    <!-- 模块5: 蛋糕装饰 -->
+    <section id="mod-decorate" class="module">
+      <div class="module-header">
+        <h2 class="module-title">装饰蛋糕 & 涂鸦</h2>
+      </div>
+      <div class="decorate-area">
+        <canvas id="decorate-canvas" width="800" height="800"></canvas>
+      </div>
+      <div class="decorate-tabs" id="decorate-tabs">
+        <button class="tab-btn" data-tab="paint">涂鸦</button>
+        <button class="tab-btn active" data-tab="candles">蜡烛</button>
+        <button class="tab-btn" data-tab="fruits">食材</button>
+        <button class="tab-btn" data-tab="toppers">插件</button>
+      </div>
+      <div class="decorate-paint-tools hidden" id="decorate-paint-tools">
+        <div class="paint-color-picker" id="decorate-paint-color-picker"></div>
+        <div class="brush-size-slider">
+          <label>笔刷大小</label>
+          <input type="range" id="decorate-brush-size" min="10" max="50" value="20">
+        </div>
+        <div class="opacity-slider">
+          <label>透明度</label>
+          <input type="range" id="decorate-paint-opacity" min="10" max="100" value="80">
+        </div>
+        <button class="btn-tool" id="decorate-undo">撤销</button>
+        <button class="btn-tool" id="decorate-clear">清空</button>
+      </div>
+      <div class="decorate-carousel" id="decorate-carousel">
+        <button class="carousel-arrow" id="decorate-scroll-left" type="button" aria-label="查看上一组素材">&#8249;</button>
+        <div class="decorate-items-track" id="decorate-items-track">
+          <div class="decorate-items" id="decorate-items">
+            <!-- 由 JS 动态生成 -->
+          </div>
+        </div>
+        <button class="carousel-arrow" id="decorate-scroll-right" type="button" aria-label="查看下一组素材">&#8250;</button>
+      </div>
+      <p class="decorate-tip" id="decorate-tip">按住下方素材直接拖到蛋糕上。双指可旋转缩放，滚轮缩放（Shift+滚轮旋转），长按删除。</p>
+      <button class="btn-primary btn-next" id="decorate-done">完成装饰，去许愿</button>
+    </section>
+
+    <!-- 模块6: 截图分享 -->
+    <section id="mod-screenshot" class="module">
+      <div class="screenshot-overlay">
+        <div class="screenshot-modal">
+          <h2 class="module-title">保存蛋糕成品</h2>
+          <div class="screenshot-preview" id="screenshot-preview">
+            <canvas id="screenshot-canvas"></canvas>
+          </div>
+          <div class="screenshot-templates" id="screenshot-templates">
+            <button class="template-btn active" data-tpl="polaroid">拍立得</button>
+            <button class="template-btn" data-tpl="cream_daisy">奶油雏菊</button>
+            <button class="template-btn" data-tpl="spring_summer">春尽夏生</button>
+            <button class="template-btn" data-tpl="magic_card">魔法贺卡</button>
+          </div>
+          <div class="screenshot-actions">
+            <button class="btn-primary" id="screenshot-save">保存到相册</button>
+            <button class="btn-secondary" id="screenshot-album">查看相册</button>
+            <button class="btn-secondary" id="screenshot-skip">跳过，直接许愿</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模块7: 蜡烛仪式 -->
+    <section id="mod-ceremony" class="module">
+      <div class="ceremony-area">
+        <canvas id="ceremony-canvas" width="800" height="800"></canvas>
+        <div class="ceremony-overlay" id="ceremony-overlay"></div>
+        <p class="ceremony-wish-text hidden" id="ceremony-wish-text">请许下你的心愿</p>
+      </div>
+      <p class="ceremony-hint" id="ceremony-hint">点击蜡烛点亮它</p>
+      <button class="btn-primary hidden ceremony-action-btn" id="ceremony-action-btn">开始吹蜡烛</button>
+    </section>
+
+    <!-- 模块8: 切蛋糕 -->
+    <section id="mod-cake-cut" class="module">
+      <div class="cut-area">
+        <canvas id="cut-canvas" width="800" height="800"></canvas>
+        <div class="plate-dropzone hidden" id="plate-dropzone" aria-hidden="true">
+          <picture>
+            <source srcset="assets/images/cake/plates/single/plate.webp" type="image/webp">
+            <img src="assets/images/cake/plates/single/plate.png" alt="蛋糕盘" draggable="false">
+          </picture>
+          <p class="plate-dropzone-text">把蛋糕拖到盘子里</p>
+        </div>
+        <div class="cut-knife" id="cut-knife">
+          <picture>
+            <source srcset="assets/images/ceremony/tools/cake_knife/knife.webp" type="image/webp">
+            <img src="assets/images/ceremony/tools/cake_knife/knife.png" alt="蛋糕刀" draggable="false">
+          </picture>
+        </div>
+      </div>
+      <p class="cut-hint" id="cut-hint"></p>
+      <button class="btn-primary btn-next hidden" id="plate-finish-btn">装盘完成</button>
+    </section>
+
+    <!-- 模块9: 收尾 -->
+    <section id="mod-ending" class="module">
+      <div class="ending-content">
+        <p class="ending-text" id="ending-text">
+          春尽夏生，岁岁欢愉，愿你万事顺意，平安喜乐
+        </p>
+        <button class="btn-primary hidden" id="ending-restart">重新制作蛋糕</button>
+      </div>
+    </section>
+
+    <!-- 相册面板 -->
+    <div class="album-overlay hidden" id="album-overlay">
+      <div class="album-modal">
+        <div class="album-header">
+          <h2 class="module-title">我的相册</h2>
+          <button class="btn-tool" id="album-close">关闭</button>
+        </div>
+        <div class="album-preview" id="album-preview">
+          <p class="album-hint">选择一张照片查看</p>
+        </div>
+        <div class="album-actions hidden" id="album-actions">
+          <button class="btn-primary" id="album-save-local">保存到本地</button>
+          <button class="btn-secondary" id="album-delete">删除</button>
+        </div>
+        <div class="album-grid" id="album-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/modules/cover.js"></script>
+  <script src="js/modules/cakeSelect.js"></script>
+  <script src="js/modules/creamMaking.js"></script>
+  <script src="js/modules/creamPaint.js"></script>
+  <script src="js/modules/album.js"></script>
+  <script src="js/modules/decorate.js"></script>
+  <script src="js/modules/screenshot.js"></script>
+  <script src="js/modules/ceremony.js"></script>
+  <script src="js/modules/cakeCut.js"></script>
+  <script src="js/modules/ending.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

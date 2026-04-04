@@ -1,0 +1,791 @@
+/* ===== 全局背景 doodles ===== */
+.global-doodle-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+.global-doodle {
+  position: absolute;
+  opacity: 0.2;
+  filter: saturate(0.95);
+}
+.global-doodle img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.global-doodle-1 { top: 6%; left: 4%; width: clamp(52px, 7vw, 90px); transform: rotate(-10deg); }
+.global-doodle-2 { top: 14%; right: 6%; width: clamp(48px, 6vw, 86px); transform: rotate(8deg); }
+.global-doodle-3 { bottom: 18%; left: 6%; width: clamp(56px, 8vw, 96px); transform: rotate(6deg); }
+.global-doodle-4 { bottom: 10%; right: 8%; width: clamp(54px, 8vw, 92px); transform: rotate(-8deg); }
+.global-doodle-5 { top: 42%; left: 2.5%; width: clamp(38px, 5vw, 68px); transform: rotate(12deg); }
+.global-doodle-6 { top: 56%; right: 4%; width: clamp(40px, 5vw, 70px); transform: rotate(-10deg); }
+
+/* ===== 模块1: 封面 ===== */
+#mod-cover {
+  background: #f3c200;
+  overflow: hidden;
+}
+.cover-bg {
+  position: absolute;
+  inset: 0;
+  background: #f3c200;
+  z-index: 0;
+}
+.cover-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  text-align: center;
+  width: 100%;
+  max-width: 600px;
+}
+.cover-title {
+  font-family: var(--font-title);
+  font-size: clamp(3rem, 12vw, 7rem);
+  color: #ffffff;
+  line-height: 1.1;
+  opacity: 0;
+  text-shadow: 0 0.18em 0.32em rgba(139, 90, 43, 0.16);
+}
+.cover-subtitle {
+  font-family: var(--font-script);
+  font-size: clamp(1rem, 4vw, 1.6rem);
+  color: rgba(255,255,255,0.95);
+  text-shadow: 0 1px 4px rgba(139,90,43,0.2);
+  line-height: 1.5;
+  opacity: 0;
+}
+.cover-btn {
+  opacity: 0;
+}
+.cover-doodles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.doodle {
+  position: absolute;
+  width: clamp(40px, 8vw, 80px);
+  opacity: 0.4;
+}
+.doodle-tl { top: 8%; left: 5%; transform: rotate(-15deg); }
+.doodle-tr { top: 5%; right: 5%; transform: rotate(10deg); }
+.doodle-bl { bottom: 12%; left: 8%; transform: rotate(5deg); }
+.doodle-br { bottom: 8%; right: 6%; transform: rotate(-8deg); }
+
+/* ===== 模块2: 蛋糕胚选择 ===== */
+.cake-select-options {
+  display: flex;
+  gap: 5vw;
+  justify-content: center;
+  align-items: flex-end;
+  margin: 3vh 0;
+}
+.cake-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  border: 2px solid transparent;
+  transition: all var(--transition-base);
+}
+.cake-option.selected {
+  border-color: var(--accent-brown);
+  transform: scale(1.05);
+  background: rgba(139,90,43,0.05);
+}
+.cake-option-img {
+  width: clamp(120px, 30vw, 200px);
+  height: clamp(120px, 30vw, 200px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cake-option-img img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.cake-option-label {
+  margin-top: 0.5rem;
+  font-size: clamp(0.8rem, 2.5vw, 1rem);
+  color: var(--text-brown);
+}
+
+/* ===== 模块3: 奶油制作 ===== */
+.cream-making-area {
+  position: relative;
+  width: clamp(280px, 70vw, 500px);
+  height: clamp(280px, 55vh, 400px);
+}
+#cream-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+.egg-tool {
+  position: absolute;
+  left: 2%;
+  top: 22%;
+  width: clamp(52px, 12vw, 86px);
+  z-index: 4;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform var(--transition-fast), left 200ms ease, top 200ms ease;
+}
+.egg-tool img,
+.egg-tool picture {
+  width: 100%;
+  display: block;
+  pointer-events: none;
+}
+.egg-tool.dragging {
+  transition: none;
+  transform: scale(1.05);
+}
+.cream-bowl-area {
+  position: absolute;
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  z-index: 2;
+  pointer-events: none;
+}
+.bowl-img { width: 100%; }
+.cream-liquid {
+  position: absolute;
+  top: 25%;
+  left: 15%;
+  width: 70%;
+  height: 50%;
+  border-radius: 50%;
+  background: rgba(255,250,240,0.9);
+  opacity: 0;
+  transition: background var(--transition-slow);
+}
+.mixer-tool {
+  position: absolute;
+  top: 10%;
+  right: 3%;
+  width: clamp(50px, 12vw, 80px);
+  max-height: 40%;
+  cursor: grab;
+  z-index: 3;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 0.45;
+  transition: opacity var(--transition-fast), transform var(--transition-fast), left 200ms ease, top 200ms ease;
+}
+.mixer-tool img,
+.mixer-tool picture {
+  width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.mixer-tool:active { cursor: grabbing; }
+.mixer-tool.active {
+  opacity: 1;
+  transform: scale(1.04);
+}
+.mixer-tool.dragging {
+  transition: none;
+}
+
+.cream-hint {
+  min-height: 1.5em;
+  margin-top: 0.75rem;
+  font-size: 0.92rem;
+  color: var(--text-brown);
+  text-align: center;
+}
+
+.color-picker {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding: 0.5rem 1rem;
+  max-width: 90vw;
+  scroll-snap-type: x mandatory;
+  align-items: stretch;
+}
+.bottle-option {
+  flex-shrink: 0;
+  width: clamp(54px, 14vw, 86px);
+  border-radius: 18px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  scroll-snap-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  background: rgba(255,255,255,0.48);
+  padding: 0.4rem 0.45rem 0.35rem;
+  text-align: center;
+}
+.bottle-option:hover {
+  transform: translateY(-2px);
+}
+.bottle-option.active {
+  border-color: var(--accent-brown);
+  transform: translateY(-4px);
+}
+.bottle-option-thumb {
+  width: 100%;
+  aspect-ratio: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bottle-option-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.bottle-option-label {
+  display: block;
+  margin-top: 0.18rem;
+  font-size: 0.72rem;
+  color: var(--text-brown);
+}
+
+.cream-progress {
+  width: clamp(200px, 60vw, 350px);
+  margin-top: 1rem;
+  position: relative;
+}
+.cream-progress-bar {
+  height: 8px;
+  background: rgba(139,90,43,0.15);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.cream-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent-brown);
+  border-radius: 4px;
+  transition: width var(--transition-base);
+}
+.cream-progress-text {
+  display: block;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-brown);
+  margin-top: 0.3rem;
+}
+.cream-apply-stage {
+  width: min(92vw, 520px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+.cream-apply-preview {
+  position: relative;
+  width: 100%;
+  height: clamp(220px, 36vh, 320px);
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.24);
+  box-shadow: inset 0 0 0 1px rgba(139,90,43,0.08);
+  overflow: hidden;
+}
+#cream-apply-canvas {
+  width: 100%;
+  height: 100%;
+}
+.spatula-tool {
+  position: absolute;
+  top: 8%;
+  right: 4%;
+  width: clamp(62px, 15vw, 96px);
+  z-index: 3;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform var(--transition-fast), left 160ms ease, top 160ms ease;
+}
+.spatula-tool img,
+.spatula-tool picture {
+  width: 100%;
+  display: block;
+  pointer-events: none;
+}
+.spatula-tool.dragging {
+  transition: none;
+  transform: scale(1.04);
+}
+.cream-cover-progress {
+  width: clamp(220px, 60vw, 360px);
+}
+
+/* ===== 模块4: 抹奶油 & 涂鸦 ===== */
+.paint-area {
+  position: relative;
+  width: clamp(320px, 76vw, 760px);
+  height: clamp(320px, 60vh, 720px);
+}
+#paint-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.12);
+}
+.paint-hint {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-brown);
+  text-align: center;
+}
+.paint-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.paint-color-picker {
+  display: flex;
+  gap: 0.55rem;
+  overflow-x: auto;
+  max-width: min(92vw, 560px);
+  padding: 0.2rem 0.1rem;
+}
+.paint-color-chip {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  box-shadow: 0 2px 7px rgba(0,0,0,0.08);
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+.paint-color-chip.active {
+  border-color: var(--accent-brown);
+  transform: scale(1.1);
+}
+.brush-size-slider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-brown);
+}
+.opacity-slider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-brown);
+}
+.brush-size-slider input[type="range"] {
+  width: 100px;
+  accent-color: var(--accent-brown);
+}
+.opacity-slider input[type="range"] {
+  width: 100px;
+  accent-color: var(--accent-brown);
+}
+
+/* ===== 模块5: 蛋糕装饰 ===== */
+.decorate-area {
+  position: relative;
+  width: clamp(320px, 76vw, 760px);
+  height: clamp(320px, 58vh, 680px);
+}
+#decorate-canvas {
+  width: 100%;
+  height: 100%;
+  background: rgba(255,255,255,0.12);
+  border-radius: var(--radius-md);
+}
+.decorate-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.tab-btn {
+  padding: 0.4rem 1rem;
+  border: 1.5px solid rgba(139,90,43,0.2);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-brown);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.tab-btn.active {
+  background: var(--accent-brown);
+  color: var(--bg-warm);
+  border-color: var(--accent-brown);
+}
+.decorate-paint-tools {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.decorate-carousel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(94vw, 760px);
+  margin: 0 auto;
+}
+.carousel-arrow {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(139,90,43,0.16);
+  background: rgba(255,255,255,0.58);
+  color: var(--text-brown);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+.carousel-arrow:hover {
+  transform: translateY(-1px);
+  border-color: rgba(139,90,43,0.32);
+}
+.decorate-items-track {
+  overflow-x: auto;
+  flex: 1;
+  scroll-behavior: smooth;
+}
+.decorate-items-track::-webkit-scrollbar {
+  height: 6px;
+}
+.decorate-items-track::-webkit-scrollbar-thumb {
+  background: rgba(139,90,43,0.2);
+  border-radius: 999px;
+}
+.decorate-items {
+  display: flex;
+  gap: 0.55rem;
+  padding: 0.35rem 0.1rem 0.55rem;
+  min-height: 86px;
+}
+.decorate-item {
+  flex-shrink: 0;
+  width: clamp(58px, 14vw, 82px);
+  height: clamp(58px, 14vw, 82px);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(139,90,43,0.06);
+  padding: 6px;
+  transition: all var(--transition-fast);
+  background: rgba(255,255,255,0.55);
+  touch-action: none;
+}
+.decorate-item:hover { border-color: rgba(139,90,43,0.2); transform: translateY(-2px); }
+.decorate-item.drag-source { transform: scale(0.96); opacity: 0.72; }
+.decorate-item img { width: 100%; height: 100%; object-fit: contain; }
+.decorate-tip {
+  margin-top: 0.65rem;
+  max-width: min(92vw, 680px);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: rgba(93, 59, 20, 0.82);
+  text-align: center;
+}
+.palette-drag-ghost {
+  position: fixed;
+  width: 72px;
+  height: 72px;
+  pointer-events: none;
+  z-index: 1200;
+  padding: 0;
+  border-radius: 18px;
+  background: transparent;
+  box-shadow: none;
+  transform: translate(-50%, -50%) rotate(-6deg);
+}
+.palette-drag-ghost img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ===== 模块6: 截图分享 ===== */
+.screenshot-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.screenshot-modal {
+  background: var(--bg-cream);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  width: 90vw;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  text-align: center;
+}
+.screenshot-preview {
+  width: 100%;
+  aspect-ratio: 3/4;
+  background: var(--bg-warm);
+  border-radius: var(--radius-md);
+  margin: 1rem 0;
+  overflow: hidden;
+}
+#screenshot-canvas { width: 100%; height: 100%; }
+.screenshot-templates {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+.template-btn {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+  border: 1.5px solid rgba(139,90,43,0.2);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-brown);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.template-btn.active {
+  background: var(--accent-brown);
+  color: var(--bg-warm);
+}
+.screenshot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+/* ===== 模块7: 蜡烛仪式 ===== */
+.ceremony-area {
+  position: relative;
+  width: clamp(300px, 80vw, 600px);
+  height: clamp(350px, 65vh, 600px);
+}
+#ceremony-canvas { width: 100%; height: 100%; }
+.ceremony-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0);
+  transition: background 1s linear;
+  pointer-events: none;
+  border-radius: var(--radius-md);
+}
+.ceremony-overlay.dark {
+  background: rgba(0,0,0,0.6);
+}
+.ceremony-wish-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  font-family: var(--font-body);
+  font-size: clamp(1.2rem, 4vw, 2rem);
+  color: rgba(255,250,240,0.95);
+  text-shadow: 0 0 20px rgba(255,200,100,0.6);
+  white-space: nowrap;
+  z-index: 5;
+}
+.ceremony-hint {
+  font-size: 0.9rem;
+  color: var(--text-brown);
+  margin-top: 1rem;
+  text-align: center;
+}
+.ceremony-action-btn {
+  margin-top: 1rem;
+  min-width: auto;
+  width: auto;
+  padding: 0 1.5rem;
+}
+
+/* ===== 模块8: 切蛋糕 ===== */
+.cut-area {
+  position: relative;
+  width: clamp(300px, 80vw, 600px);
+  height: clamp(350px, 65vh, 600px);
+  overflow: hidden;
+}
+#cut-canvas { width: 100%; height: 100%; }
+.cut-knife {
+  position: absolute;
+  top: 10%;
+  left: 5%;
+  width: clamp(50px, 12vw, 80px);
+  cursor: pointer;
+  z-index: 5;
+  transition: filter var(--transition-fast);
+  touch-action: none;
+}
+.cut-knife.dragging {
+  transition: none;
+  transform: scale(1.04);
+}
+.cut-knife.active { filter: brightness(1.2); }
+.cut-knife img { width: 100%; }
+.plate-dropzone {
+  position: absolute;
+  right: 2%;
+  bottom: 2%;
+  width: clamp(120px, 28vw, 180px);
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+}
+.plate-dropzone img {
+  width: 100%;
+  display: block;
+}
+.plate-dropzone-text {
+  margin-top: -0.35rem;
+  font-size: 0.76rem;
+  color: rgba(93, 59, 20, 0.85);
+}
+.cut-hint {
+  font-size: 0.9rem;
+  color: var(--text-brown);
+  margin-top: 1rem;
+  text-align: center;
+  min-height: 1.5em;
+}
+
+/* ===== 模块9: 收尾 ===== */
+#mod-ending { background: var(--bg-warm); }
+.ending-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+.ending-text {
+  font-family: var(--font-body);
+  font-size: clamp(1.2rem, 4vw, 2rem);
+  color: var(--text-brown);
+  line-height: 1.8;
+  max-width: 80vw;
+  opacity: 0;
+}
+
+/* ===== 相册面板 ===== */
+.album-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.album-overlay.hidden { display: none; }
+.album-modal {
+  background: var(--bg-cream);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  width: 92vw;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.album-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.album-preview {
+  width: 100%;
+  aspect-ratio: 3/4;
+  background: var(--bg-warm);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.album-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.album-hint {
+  color: rgba(139,90,43,0.5);
+  font-size: 0.9rem;
+}
+.album-empty {
+  color: rgba(139,90,43,0.5);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 2rem 0;
+}
+.album-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+}
+.album-actions.hidden { display: none; }
+.album-grid {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.3rem 0;
+}
+.album-thumb {
+  flex-shrink: 0;
+  width: 72px;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+  background: var(--bg-warm);
+  padding: 0;
+}
+.album-thumb:hover { transform: translateY(-2px); }
+.album-thumb.selected {
+  border-color: var(--accent-brown);
+  transform: scale(1.05);
+}
+.album-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

@@ -1,0 +1,170 @@
+/* ===== 全局变量 ===== */
+:root {
+  --bg-warm: #FFF3D4;
+  --bg-cream: #FFFDF5;
+  --text-brown: #8B5A2B;
+  --text-light: #FFFFFF;
+  --accent-brown: #8B5A2B;
+  --shadow-soft: rgba(139, 90, 43, 0.1);
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+  --font-title: 'Ma Shan Zheng', cursive;
+  --font-body: 'ZCOOL KuaiLe', sans-serif;
+  --font-script: 'Cookie', cursive;
+  --transition-fast: 150ms ease;
+  --transition-base: 300ms ease;
+  --transition-slow: 500ms ease;
+}
+
+/* ===== 重置 & 基础 ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-warm);
+  color: var(--text-brown);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ===== App 容器 ===== */
+#app {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ===== 模块通用 ===== */
+.module {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-slow);
+  padding: 5vw;
+}
+.module.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 10;
+}
+.module.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.module-header { text-align: center; margin-bottom: 3vh; }
+.module-title {
+  font-family: var(--font-body);
+  font-size: clamp(1.2rem, 4vw, 2rem);
+  color: var(--text-brown);
+}
+
+/* ===== 按钮 ===== */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60%;
+  max-width: 300px;
+  height: 48px;
+  padding: 0 2rem;
+  background: var(--accent-brown);
+  color: var(--bg-warm);
+  font-family: var(--font-body);
+  font-size: clamp(0.9rem, 3vw, 1.1rem);
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+  box-shadow: 0 4px 16px var(--shadow-soft);
+  /* 蜡笔手绘边缘模拟 */
+  outline: 2px solid rgba(139,90,43,0.15);
+  outline-offset: 2px;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-primary:active { transform: scale(0.95); }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-brown);
+  border: 2px dashed var(--accent-brown);
+  border-radius: var(--radius-lg);
+  padding: 0.6rem 1.5rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.btn-secondary:hover { background: rgba(139,90,43,0.08); }
+
+.btn-tool {
+  background: rgba(139,90,43,0.1);
+  color: var(--text-brown);
+  border: 1.5px solid rgba(139,90,43,0.2);
+  border-radius: var(--radius-md);
+  padding: 0.4rem 1rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.btn-tool:hover { background: rgba(139,90,43,0.18); }
+
+.btn-next {
+  position: absolute;
+  bottom: 5vh;
+  right: 5vw;
+  min-width: auto;
+  width: auto;
+  padding: 0 1.5rem;
+}
+
+.hidden { display: none !important; }
+
+/* ===== 纸张底纹 ===== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg, transparent, transparent 20px,
+      rgba(139,90,43,0.015) 20px, rgba(139,90,43,0.015) 21px
+    ),
+    repeating-linear-gradient(
+      90deg, transparent, transparent 20px,
+      rgba(139,90,43,0.015) 20px, rgba(139,90,43,0.015) 21px
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===== Canvas 通用 ===== */
+canvas {
+  display: block;
+  max-width: 100%;
+  touch-action: none;
+}
+
+/* ===== 滚动条隐藏 ===== */
+::-webkit-scrollbar { width: 0; height: 0; }
+
+/* ===== 响应式 ===== */
+@media (min-width: 768px) {
+  .module { padding: 3vw; }
+  .btn-next { bottom: 4vh; right: 4vw; }
+}
+@media (min-width: 1024px) {
+  .module { padding: 2vw; }
+}
