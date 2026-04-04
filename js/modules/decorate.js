@@ -1,6 +1,6 @@
 /**
  * 模块5: 蛋糕装饰
- * 在同一画布中同步展示奶油、蜡笔涂鸦和装饰元素
+ * 在同一画布中同步展示奶油、裱花笔触和装饰元素
  * 装饰素材从底部面板直接拖拽到蛋糕上
  */
 const DecorateModule = {
@@ -94,7 +94,7 @@ const DecorateModule = {
 				this.carousel.classList.toggle('hidden', this.activeTab === 'paint');
 				this._updateSelectionTools();
 				this.tipEl.textContent = this.activeTab === 'paint'
-					? '在蛋糕上继续涂鸦，装饰会同步预览在成品上。'
+					? '像拿裱花袋一样在蛋糕上继续挤奶油，装饰会同步预览在成品上。'
 					: '按住下方素材直接拖到蛋糕上；手机端可先点选素材，再用下方按钮放大、缩小、旋转或删除。';
 				this._renderItems();
 				this._render();
@@ -556,7 +556,7 @@ const DecorateModule = {
 				if (!stroke.points || stroke.points.length < 2) {
 					return;
 				}
-				Utils.drawCrayonStroke(layerCtx, this._getStrokeAbsolutePoints(stroke), {
+				Utils.drawCreamStroke(layerCtx, this._getStrokeAbsolutePoints(stroke), {
 					color: stroke.color,
 					opacity: stroke.opacity,
 					width: stroke.width,

@@ -26,8 +26,6 @@ const CeremonyModule = {
     this.hintEl = document.getElementById('ceremony-hint');
     this.wishText = document.getElementById('ceremony-wish-text');
     this.actionBtn = document.getElementById('ceremony-action-btn');
-    this.lightBtn = document.getElementById('ceremony-light-btn');
-    this.musicBtn = document.getElementById('ceremony-music-btn');
 
     this._allLit = false;
     this._allBlown = false;
@@ -154,8 +152,8 @@ const CeremonyModule = {
         const glowRadius = Math.max(size.width, size.height) * 0.9;
         this.ctx.save();
         const glow = this.ctx.createRadialGradient(glowX, glowY, 0, glowX, glowY, glowRadius);
-        glow.addColorStop(0, 'rgba(255, 200, 80, 0.35)');
-        glow.addColorStop(0.4, 'rgba(255, 180, 60, 0.15)');
+        glow.addColorStop(0, 'rgba(255, 214, 124, 0.55)');
+        glow.addColorStop(0.4, 'rgba(255, 186, 78, 0.28)');
         glow.addColorStop(1, 'rgba(255, 160, 40, 0)');
         this.ctx.fillStyle = glow;
         this.ctx.beginPath();
@@ -202,8 +200,8 @@ const CeremonyModule = {
       const castRadiusY = Math.max(size.width, size.height) * 1.08;
 
       const flameGlow = this.ctx.createRadialGradient(glowX, flameGlowY, flameRadius * 0.02, glowX, flameGlowY, flameRadius);
-      flameGlow.addColorStop(0, 'rgba(255, 247, 224, 0.24)');
-      flameGlow.addColorStop(0.4, 'rgba(255, 218, 148, 0.16)');
+      flameGlow.addColorStop(0, 'rgba(255, 247, 224, 0.36)');
+      flameGlow.addColorStop(0.4, 'rgba(255, 218, 148, 0.24)');
       flameGlow.addColorStop(1, 'rgba(255, 170, 88, 0)');
       this.ctx.fillStyle = flameGlow;
       this.ctx.beginPath();
@@ -211,8 +209,8 @@ const CeremonyModule = {
       this.ctx.fill();
 
       const castGlow = this.ctx.createRadialGradient(glowX, castGlowY, castRadiusY * 0.05, glowX, castGlowY, castRadiusX);
-      castGlow.addColorStop(0, 'rgba(255, 228, 176, 0.16)');
-      castGlow.addColorStop(0.45, 'rgba(255, 198, 116, 0.1)');
+      castGlow.addColorStop(0, 'rgba(255, 228, 176, 0.22)');
+      castGlow.addColorStop(0.45, 'rgba(255, 198, 116, 0.14)');
       castGlow.addColorStop(1, 'rgba(255, 172, 92, 0)');
       this.ctx.fillStyle = castGlow;
       this.ctx.beginPath();
@@ -258,31 +256,11 @@ const CeremonyModule = {
       this._beginBlowPhase();
     };
 
-    const onFutureLight = () => {
-      Utils.showToast('灯光挑战留到下一轮解锁', 1400);
-    };
-
-    const onFutureMusic = () => {
-      Utils.showToast('音乐挑战留到下一轮解锁', 1400);
-    };
-
     this.canvas.addEventListener('pointerdown', onCanvasPointer);
     this.actionBtn.onclick = onAction;
-    if (this.lightBtn) {
-      this.lightBtn.onclick = onFutureLight;
-    }
-    if (this.musicBtn) {
-      this.musicBtn.onclick = onFutureMusic;
-    }
     this._cleanupFns.push(() => {
       this.canvas.removeEventListener('pointerdown', onCanvasPointer);
       this.actionBtn.onclick = null;
-      if (this.lightBtn) {
-        this.lightBtn.onclick = null;
-      }
-      if (this.musicBtn) {
-        this.musicBtn.onclick = null;
-      }
     });
   },
 
@@ -325,12 +303,12 @@ const CeremonyModule = {
         const flameRadius = Math.max(size.width * scaleX, size.height * scaleY) * 1.8;
         const castRadius = Math.max(size.width * scaleX, size.height * scaleY) * 2.8;
         return [
-          `radial-gradient(circle at ${glowX}px ${flameGlowY}px, rgba(255,236,198,0.22) 0px, rgba(255,206,128,0.12) ${flameRadius * 0.34}px, rgba(10,8,14,0) ${flameRadius}px)`,
-          `radial-gradient(ellipse at ${glowX}px ${castGlowY}px, rgba(255,225,170,0.1) 0px, rgba(255,192,110,0.06) ${castRadius * 0.34}px, rgba(10,8,14,0) ${castRadius}px)`,
+          `radial-gradient(circle at ${glowX}px ${flameGlowY}px, rgba(255,238,202,0.34) 0px, rgba(255,208,132,0.18) ${flameRadius * 0.34}px, rgba(10,8,14,0) ${flameRadius}px)`,
+          `radial-gradient(ellipse at ${glowX}px ${castGlowY}px, rgba(255,225,170,0.16) 0px, rgba(255,192,110,0.08) ${castRadius * 0.34}px, rgba(10,8,14,0) ${castRadius}px)`,
         ];
       });
 
-    const roomDarkness = 'linear-gradient(rgba(8, 6, 12, 0.68), rgba(8, 6, 12, 0.78))';
+    const roomDarkness = 'linear-gradient(rgba(6, 5, 10, 0.82), rgba(6, 5, 10, 0.9))';
     this.overlay.style.background = `${candleGlows.join(', ')}${candleGlows.length ? ', ' : ''}${roomDarkness}`;
   },
 

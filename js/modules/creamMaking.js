@@ -1,6 +1,6 @@
 /**
  * 模块3: 奶油制作
- * 交互顺序：打鸡蛋 -> 选色 -> 打发奶油 -> 给蛋糕抹面
+ * 交互顺序：打鸡蛋 -> 打发奶油 -> 滴入色素 -> 给蛋糕抹面
  */
 const CreamMakingModule = {
   step: 'egg',
@@ -34,32 +34,48 @@ const CreamMakingModule = {
     this._resetState();
     this._resizeCanvas();
     this._resizeApplyCanvas();
+    this._setLoadingState(true);
 
-    this._images = await Utils.preloadImages([
-      'making/ingredients/eggs/whole',
-      'making/ingredients/eggs/cracked_left',
-      'making/ingredients/eggs/cracked_right',
-      'making/ingredients/eggs/yolk',
-    ]);
-    this._cakeLayers = await Utils.loadCakeLayers(App.state.cakeType || 'single', { coated: false });
-    await this._loadTargetCakeLayers(App.state.creamColor || CONFIG.creamColors[0]);
+    try {
+      const preloadPaths = [
+        'making/ingredients/eggs/whole',
+        'making/ingredients/eggs/cracked_left',
+        'making/ingredients/eggs/cracked_right',
+        'making/ingredients/eggs/yolk',
+        'making/containers/bowl/bowl',
+        'making/tools/mixer/mixer',
+        'making/tools/spatula/spatula',
+        ...CONFIG.creamColors.map((item) => item.src),
+      ];
 
-    this._rememberHomePositions();
-    this._setupApplyPreview();
-    this._setupBottlePicker();
-    this._bindEggDrag();
-    this._bindMixerDrag();
-    this._bindSpatulaDrag();
-    this._renderLiquid();
-    this._renderApplyPreview();
-    this._updateProgress();
-    this._updateCoverProgress();
-    this._setHint('把左边的鸡蛋拖到碗里');
-    this._setMixerActive(false);
-    this._clearCanvas();
+      const [images, cakeLayers] = await Promise.all([
+        Utils.preloadImages(preloadPaths),
+        Utils.loadCakeLayers(App.state.cakeType || 'single', { coated: false }),
+      ]);
+
+      this._images = images;
+      this._cakeLayers = cakeLayers;
+
+      this._rememberHomePositions();
+      this._setupApplyPreview();
+      this._setupBottlePicker();
+      this._bindEggDrag();
+      this._bindMixerDrag();
+      this._bindSpatulaDrag();
+      this._renderLiquid();
+      this._renderApplyPreview();
+      this._updateProgress();
+      this._updateCoverProgress();
+      this._setHint('把左边的鸡蛋拖到碗里');
+      this._setMixerActive(false);
+      this._clearCanvas();
+    } finally {
+      this._setLoadingState(false);
+    }
   },
 
   _cacheDom() {
+    this.moduleEl = document.getElementById('mod-cream-making');
     this.area = document.querySelector('.cream-making-area');
     this.canvas = document.getElementById('cream-canvas');
     this.ctx = this.canvas.getContext('2d');
@@ -93,6 +109,7 @@ const CreamMakingModule = {
     this._lastSpatulaPoint = null;
     this._eggAdded = false;
     this._colorMixed = false;
+    this._targetCakeLayers = [];
     this._bottleDrag = null;
     this._destroyBottleGhost();
     App.state.creamColor = App.state.creamColor || CONFIG.creamColors[0];
@@ -101,9 +118,16 @@ const CreamMakingModule = {
     this.nextBtn.classList.add('hidden');
     this.nextBtn.onclick = null;
     this.eggTool.style.visibility = 'visible';
-    this._setCoatStageLayout(false);
+    this._setStageLayout('egg');
     this.spatulaTool.classList.add('hidden');
     this.spatulaTool.classList.remove('dragging');
+  },
+
+  _setLoadingState(loading) {
+    if (!this.moduleEl) {
+      return;
+    }
+    this.moduleEl.classList.toggle('is-loading', !!loading);
   },
 
   _resizeCanvas() {
@@ -327,8 +351,8 @@ const CreamMakingModule = {
 
   _getBottleHintText() {
     return this._isTouchBottleMode()
-      ? '鸡蛋已经打进碗里，点一下色素瓶给奶油上色'
-      : '鸡蛋已经打进碗里，把一个色素瓶拖进碗里给奶油上色';
+      ? '奶油已经打发好，点一下色素瓶给奶油上色'
+      : '奶油已经打发好，把一个色素瓶拖进碗里给奶油上色';
   },
 
   _createBottleGhost(color, event) {
@@ -637,8 +661,10 @@ const CreamMakingModule = {
         this._eggAdded = true;
         this._colorMixed = false;
         this._renderLiquid();
-        this.step = 'color';
-        this._setHint(this._getBottleHintText());
+        this.step = 'whip';
+        this._setStageLayout('whip');
+        this._setMixerActive(true);
+        this._setHint('拖动搅拌器，在碗里连续画圈，把蛋液打发成奶油');
       }
     };
 
@@ -646,19 +672,19 @@ const CreamMakingModule = {
   },
 
   _playColorDrop(color) {
-    if (!['color', 'whip', 'ready'].includes(this.step)) {
+    if (this.step !== 'color') {
       return;
     }
 
+    const targetLayersPromise = this._loadTargetCakeLayers(color);
     this.step = 'drop-color';
-    this.whipProgress = 0;
+    this._setStageLayout('drop-color');
     this._totalAngle = 0;
     this._lastAngle = null;
     this._eggAdded = true;
     this._colorMixed = false;
-    this._updateProgress();
     this._setMixerActive(false);
-    this._setHint('色素慢慢滴进蛋黄里');
+    this._setHint('把色素滴进奶油里，让颜色慢慢晕开');
 
     let progress = 0;
     const bowl = this._getBowlMetrics();
@@ -688,9 +714,9 @@ const CreamMakingModule = {
         this._clearCanvas();
         this._colorMixed = true;
         this._renderLiquid(color, 1);
-        this.step = 'whip';
-        this._setMixerActive(true);
-        this._setHint('拖动搅拌器，在碗里连续画圈，把蛋黄打发成奶油');
+        targetLayersPromise.then(() => {
+          this._onColorDone();
+        });
       }
     };
 
@@ -749,6 +775,16 @@ const CreamMakingModule = {
     const whipFactor = Utils.clamp(this.whipProgress / 100, 0, 1);
 
     if (!this._colorMixed && safeMix <= 0) {
+      if (whipFactor > 0.04) {
+        const creamStrength = Utils.clamp(whipFactor, 0, 1);
+        this.liquid.style.background = `radial-gradient(circle at 48% 34%, rgba(255,255,255,${0.32 + creamStrength * 0.24}), rgba(255,250,242,${0.9}) 36%, rgba(247,236,220,${0.92}) 68%, rgba(233,218,196,0.95) 100%)`;
+        this.liquid.style.opacity = `${0.76 + creamStrength * 0.18}`;
+        this.liquid.style.boxShadow = `inset 0 ${10 + creamStrength * 16}px ${18 + creamStrength * 20}px rgba(255,255,255,${0.18 + creamStrength * 0.18})`;
+        this.liquid.style.transform = `scale(${0.98 + creamStrength * 0.16})`;
+        this.liquid.style.filter = `saturate(${0.82 + creamStrength * 0.08}) brightness(${1 + creamStrength * 0.08})`;
+        return;
+      }
+
       this.liquid.style.background = 'radial-gradient(circle at 50% 42%, rgba(255,223,120,0.98), rgba(255,191,92,0.96) 58%, rgba(242,155,70,0.92) 100%)';
       this.liquid.style.opacity = '0.92';
       this.liquid.style.boxShadow = 'inset 0 12px 20px rgba(255,245,214,0.28)';
@@ -820,11 +856,12 @@ const CreamMakingModule = {
     this.mixerTool.classList.toggle('active', active);
   },
 
-  _setCoatStageLayout(active) {
-    this.area.classList.toggle('hidden', active);
-    this.picker.classList.toggle('hidden', active);
-    this.progressWrap.classList.toggle('hidden', active);
-    this.applyStage.classList.toggle('hidden', !active);
+  _setStageLayout(mode) {
+    const coatStage = mode === 'coat';
+    this.area.classList.toggle('hidden', coatStage);
+    this.applyStage.classList.toggle('hidden', !coatStage);
+    this.picker.classList.toggle('hidden', mode !== 'color');
+    this.progressWrap.classList.toggle('hidden', mode !== 'whip');
   },
 
   _getAreaPoint(event) {
@@ -981,10 +1018,17 @@ const CreamMakingModule = {
   },
 
   _onWhipDone() {
-    this.step = 'coat';
+    this.step = 'color';
     this._setMixerActive(false);
-    this._setHint('奶油打发完成，拖动抹刀把奶油盖到蛋糕胚上');
-    this._setCoatStageLayout(true);
+    this._setStageLayout('color');
+    this._setHint(this._getBottleHintText());
+    Utils.showToast('奶油已经打发好，选个颜色继续调味吧 ✅', 1500);
+  },
+
+  _onColorDone() {
+    this.step = 'coat';
+    this._setHint('奶油上色完成，拖动抹刀把奶油盖到蛋糕胚上');
+    this._setStageLayout('coat');
     this.spatulaTool.classList.remove('hidden');
     this._resizeApplyCanvas();
     this._setupApplyPreview();
@@ -993,7 +1037,7 @@ const CreamMakingModule = {
     this._rememberSpatulaHome();
     this._resetTool(this.spatulaTool);
     App.saveState();
-    Utils.showToast('奶油打发完成，来给蛋糕抹面吧 ✅', 1500);
+    Utils.showToast('奶油上色完成，来给蛋糕抹面吧 ✅', 1500);
   },
 
   _onCoatDone() {
@@ -1030,6 +1074,7 @@ const CreamMakingModule = {
     this._resetTool(this.mixerTool);
     this._resetTool(this.spatulaTool);
     this._setMixerActive(false);
+    this._setLoadingState(false);
     this._clearCanvas();
   },
 };

@@ -417,7 +417,7 @@ const Utils = {
           return;
         }
         const absolutePoints = stroke.points.map((point) => Utils.getFramePoint(layout.frame, point));
-        Utils.drawCrayonStroke(layerCtx, absolutePoints, {
+        Utils.drawCreamStroke(layerCtx, absolutePoints, {
           color: stroke.color,
           opacity: stroke.opacity,
           width: stroke.width,
@@ -441,83 +441,95 @@ const Utils = {
     });
   },
 
-  drawCrayonStroke(ctx, points, options) {
+  drawCreamStroke(ctx, points, options) {
     if (!points || points.length < 2) {
       return;
     }
 
-    const width = Math.max(2, options.width);
-    const opacity = options.opacity;
+    const width = Math.max(8, options.width * 0.94);
+    const opacity = Utils.clamp(options.opacity, 0.18, 1);
     const color = options.color;
     const seed = options.seed || 1;
-    const passes = 6;
 
     ctx.save();
-    ctx.globalCompositeOperation = 'multiply';
 
-    for (let pass = 0; pass < passes; pass += 1) {
-      ctx.beginPath();
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.strokeStyle = Utils.hexToRgba(color, opacity * (pass === 0 ? 0.2 : 0.1));
-      ctx.lineWidth = Math.max(1, width * (pass === 0 ? 1.08 : 0.88 - pass * 0.08));
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = Utils.hexToRgba(color, opacity * 0.32);
+    ctx.shadowBlur = width * 0.28;
+    ctx.shadowOffsetY = Math.max(1, width * 0.05);
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      if (index === 0) {
+        ctx.moveTo(point.x, point.y);
+      } else {
+        ctx.lineTo(point.x, point.y);
+      }
+    });
+    ctx.strokeStyle = Utils.hexToRgba(color, opacity * 0.9);
+    ctx.lineWidth = width * 0.88;
+    ctx.stroke();
 
-      points.forEach((point, index) => {
-        const offsetScale = pass === 0 ? width * 0.02 : width * (0.05 + pass * 0.012);
-        const jitterX = offsetScale * Utils.seededNoise(seed + pass, index * 2 + 1);
-        const jitterY = offsetScale * Utils.seededNoise(seed + pass, index * 2 + 2);
-        const x = point.x + jitterX;
-        const y = point.y + jitterY;
-        if (index === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
-      ctx.stroke();
-    }
+    ctx.shadowColor = 'transparent';
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      if (index === 0) {
+        ctx.moveTo(point.x, point.y);
+      } else {
+        ctx.lineTo(point.x, point.y);
+      }
+    });
+    ctx.strokeStyle = Utils.hexToRgba('#FFFDF8', opacity * 0.14);
+    ctx.lineWidth = Math.max(2, width * 0.34);
+    ctx.stroke();
 
-    ctx.fillStyle = Utils.hexToRgba(color, opacity * 0.1);
     for (let index = 1; index < points.length; index += 1) {
       const prev = points[index - 1];
       const point = points[index];
       const segmentLength = Math.hypot(point.x - prev.x, point.y - prev.y);
-      const stepCount = Math.max(1, Math.floor(segmentLength / Math.max(3, width * 0.22)));
+      const spacing = Math.max(6, width * 0.28);
+      const stepCount = Math.max(1, Math.floor(segmentLength / spacing));
       const angle = Math.atan2(point.y - prev.y, point.x - prev.x);
 
       for (let step = 0; step <= stepCount; step += 1) {
         const progress = step / stepCount;
-        const baseX = prev.x + (point.x - prev.x) * progress;
-        const baseY = prev.y + (point.y - prev.y) * progress;
-        const grainX = baseX + Utils.seededNoise(seed + index, step + 17) * width * 0.18;
-        const grainY = baseY + Utils.seededNoise(seed + index, step + 29) * width * 0.18;
-        const grainWidth = Math.max(1, width * (0.18 + Utils.seededNoise(seed + step, index + 7) * 0.05));
-        const grainHeight = Math.max(1, width * (0.06 + Utils.seededNoise(seed + 3, step + 13) * 0.025));
+        const centerX = prev.x + (point.x - prev.x) * progress;
+        const centerY = prev.y + (point.y - prev.y) * progress;
+        const noise = Utils.seededNoise(seed + index * 7, step + 1);
+        const blobWidth = width * (0.76 + noise * 0.08);
+        const blobHeight = width * (0.46 + noise * 0.04);
 
         ctx.save();
-        ctx.translate(grainX, grainY);
-        ctx.rotate(angle + Utils.seededNoise(seed + 11, step + index) * 0.35);
-        ctx.fillRect(-grainWidth * 0.5, -grainHeight * 0.5, grainWidth, grainHeight);
+        ctx.translate(centerX, centerY);
+        ctx.rotate(angle + noise * 0.08);
+
+        ctx.fillStyle = Utils.hexToRgba(color, opacity * 0.96);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, blobWidth * 0.58, blobHeight * 0.54, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = Utils.hexToRgba('#FFFDF8', opacity * 0.26);
+        ctx.lineWidth = Math.max(1.2, width * 0.075);
+        ctx.beginPath();
+        ctx.moveTo(-blobWidth * 0.22, -blobHeight * 0.06);
+        ctx.quadraticCurveTo(0, -blobHeight * 0.34, blobWidth * 0.22, -blobHeight * 0.06);
+        ctx.stroke();
+
+        ctx.strokeStyle = Utils.hexToRgba('#5C4033', opacity * 0.06);
+        ctx.lineWidth = Math.max(1, width * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(-blobWidth * 0.18, blobHeight * 0.16);
+        ctx.quadraticCurveTo(0, blobHeight * 0.3, blobWidth * 0.18, blobHeight * 0.16);
+        ctx.stroke();
+
         ctx.restore();
       }
     }
 
-    ctx.globalCompositeOperation = 'screen';
-    ctx.beginPath();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = Utils.hexToRgba('#FFFFFF', opacity * 0.035);
-    ctx.lineWidth = Math.max(1, width * 0.2);
-    points.forEach((point, index) => {
-      const x = point.x + Utils.seededNoise(seed + 21, index + 31) * width * 0.04;
-      const y = point.y + Utils.seededNoise(seed + 23, index + 37) * width * 0.04;
-      if (index === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    });
-    ctx.stroke();
     ctx.restore();
+  },
+
+  drawCrayonStroke(ctx, points, options) {
+    Utils.drawCreamStroke(ctx, points, options);
   },
 };

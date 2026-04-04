@@ -1,6 +1,6 @@
 /**
- * 模块4: 抹奶油 & 涂鸦
- * 使用真实蛋糕透明区域作为可绘制蒙版，支持颜色、透明度和蜡笔质感
+ * 模块4: 抹奶油 & 裱花
+ * 使用真实蛋糕透明区域作为可绘制蒙版，支持颜色、透明度和奶油裱花质感
  */
 const CreamPaintModule = {
 	strokes: [],
@@ -204,7 +204,7 @@ const CreamPaintModule = {
 				if (!stroke.points || stroke.points.length < 2) {
 					return;
 				}
-				Utils.drawCrayonStroke(layerCtx, this._getAbsolutePoints(stroke), {
+				Utils.drawCreamStroke(layerCtx, this._getAbsolutePoints(stroke), {
 					color: stroke.color,
 					opacity: stroke.opacity,
 					width: stroke.width,
