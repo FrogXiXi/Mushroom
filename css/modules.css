@@ -239,6 +239,7 @@
   background: rgba(255,255,255,0.48);
   padding: 0.42rem 0.45rem;
   text-align: center;
+  touch-action: manipulation;
 }
 .bottle-option:hover {
   transform: translateY(-2px);

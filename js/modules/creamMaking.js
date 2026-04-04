@@ -186,12 +186,43 @@ const CreamMakingModule = {
         this.src = `${CONFIG.imgBase + color.src}.png`;
       };
 
-      this._bindBottleDrag(option, color);
+      this._bindBottleInteraction(option, color);
       this.picker.appendChild(option);
     });
   },
 
-  _bindBottleDrag(option, color) {
+  _bindBottleInteraction(option, color) {
+    if (this._isTouchBottleMode()) {
+      const tapSelect = async (event) => {
+        event.preventDefault();
+
+        if (this.step === 'egg' || this.step === 'egg-anim') {
+          Utils.showToast('先把鸡蛋打进碗里哦～', 1200);
+          return;
+        }
+        if (this.step === 'drop-color') {
+          return;
+        }
+        if (this.step !== 'color') {
+          Utils.showToast('这一阶段不用再倒色素啦～', 1200);
+          return;
+        }
+
+        this.picker.querySelectorAll('.bottle-option').forEach((item) => item.classList.remove('active'));
+        option.classList.add('active');
+        App.state.creamColor = color;
+        App.saveState();
+        await this._loadTargetCakeLayers(color);
+        this._playColorDrop(color);
+      };
+
+      option.addEventListener('click', tapSelect);
+      this._cleanupFns.push(() => {
+        option.removeEventListener('click', tapSelect);
+      });
+      return;
+    }
+
     const usePointer = typeof window !== 'undefined' && 'PointerEvent' in window;
 
     const start = (event) => {
@@ -278,6 +309,26 @@ const CreamMakingModule = {
       document.removeEventListener('mouseup', end);
       document.removeEventListener('touchend', end);
     });
+  },
+
+  _isTouchBottleMode() {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    const coarsePointer = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false;
+    const touchPoints = typeof navigator !== 'undefined'
+      ? navigator.maxTouchPoints || 0
+      : 0;
+    return coarsePointer || touchPoints > 0;
+  },
+
+  _getBottleHintText() {
+    return this._isTouchBottleMode()
+      ? '鸡蛋已经打进碗里，点一下色素瓶给奶油上色'
+      : '鸡蛋已经打进碗里，把一个色素瓶拖进碗里给奶油上色';
   },
 
   _createBottleGhost(color, event) {
@@ -587,7 +638,7 @@ const CreamMakingModule = {
         this._colorMixed = false;
         this._renderLiquid();
         this.step = 'color';
-        this._setHint('鸡蛋已经打进碗里，把一个色素瓶拖进碗里给奶油上色');
+        this._setHint(this._getBottleHintText());
       }
     };
 
