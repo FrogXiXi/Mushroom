@@ -6,9 +6,7 @@ const EndingModule = {
     const text = document.getElementById('ending-text');
     const restartBtn = document.getElementById('ending-restart');
 
-    text.innerHTML = App.state.albumReminderPending
-      ? '春尽夏生，岁岁欢愉，愿你万事顺意，平安喜乐<br>你的“魔法贺卡”有变动了，记得去相册看看，等你想好的时候再拉开它。'
-      : '春尽夏生，岁岁欢愉，愿你万事顺意，平安喜乐';
+    text.innerHTML = '春尽夏生，岁岁欢愉，愿你万事顺意，平安喜乐<br>你的照片发生了一些魔法反应，记得去相册看看。';
 
     setTimeout(() => {
       text.style.animation = 'fadeInUp 800ms ease forwards';

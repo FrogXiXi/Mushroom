@@ -1,5 +1,5 @@
 /**
- * 模块7: 蜡烛仪式（点蜡→关灯→许愿→吹蜡）
+ * 模块7: 蜡烛仪式（关灯→点蜡→许愿→吹蜡）
  */
 const CeremonyModule = {
   _candles: [],
@@ -12,6 +12,7 @@ const CeremonyModule = {
   _flameImg: null,
   _micMode: false,
   _blowPhaseStarted: false,
+  _lightsOff: false,
   _audioCtx: null,
   _analyser: null,
   _stream: null,
@@ -30,6 +31,7 @@ const CeremonyModule = {
     this._allBlown = false;
     this._micMode = false;
     this._blowPhaseStarted = false;
+    this._lightsOff = true;
     this._resetUi();
     this._resizeCanvas(this.canvas);
     await this._loadAssets();
@@ -38,7 +40,7 @@ const CeremonyModule = {
     this._setupCandles();
     this._bindEvents();
     this._animate();
-    this.hintEl.textContent = '点击蜡烛点亮它';
+    this.hintEl.textContent = '先点亮蜡烛，再开始吹蜡烛';
   },
 
   _resetUi() {
@@ -122,6 +124,10 @@ const CeremonyModule = {
       decorationImages: this._decorationImages,
     });
 
+    if (this._lightsOff && !this._allBlown) {
+      this._drawLightsOffMask();
+    }
+
     // 绘制蜡烛和火焰
     this._candles.forEach((candle) => {
       const size = candle.img
@@ -171,6 +177,54 @@ const CeremonyModule = {
     this._updateDarkOverlay();
   },
 
+  _drawLightsOffMask() {
+    if (!this._layout?.frame) {
+      return;
+    }
+
+    const frame = this._layout.frame;
+    const centerX = frame.x + frame.width / 2;
+    const centerY = frame.y + frame.height * 0.48;
+    const cakeRadius = Math.max(frame.width, frame.height) * 0.74;
+
+    this.ctx.save();
+    this.ctx.fillStyle = 'rgba(8, 7, 12, 0.72)';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    this.ctx.globalCompositeOperation = 'destination-out';
+
+    const cakeGlow = this.ctx.createRadialGradient(centerX, centerY, cakeRadius * 0.16, centerX, centerY, cakeRadius);
+    cakeGlow.addColorStop(0, 'rgba(255,255,255,0.5)');
+    cakeGlow.addColorStop(0.62, 'rgba(255,255,255,0.2)');
+    cakeGlow.addColorStop(1, 'rgba(255,255,255,0)');
+    this.ctx.fillStyle = cakeGlow;
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY, cakeRadius, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this._candles.forEach((candle) => {
+      if (!candle.lit || candle.blown) {
+        return;
+      }
+      const size = candle.img
+        ? Utils.getDecorationRenderSize(candle.img, this._layout.frame, candle.scale || 0.18)
+        : { width: this._layout.frame.width * 0.08, height: this._layout.frame.width * 0.16 };
+      const glowX = candle.absX;
+      const glowY = candle.absY - size.height * 0.58;
+      const glowRadius = Math.max(size.width, size.height) * 2.2;
+      const glow = this.ctx.createRadialGradient(glowX, glowY, glowRadius * 0.08, glowX, glowY, glowRadius);
+      glow.addColorStop(0, 'rgba(255,255,255,0.66)');
+      glow.addColorStop(0.52, 'rgba(255,255,255,0.24)');
+      glow.addColorStop(1, 'rgba(255,255,255,0)');
+      this.ctx.fillStyle = glow;
+      this.ctx.beginPath();
+      this.ctx.arc(glowX, glowY, glowRadius, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+
+    this.ctx.restore();
+  },
+
   _bindEvents() {
     const onCanvasPointer = (event) => {
       const point = Utils.getCanvasPos(this.canvas, event);
@@ -184,7 +238,7 @@ const CeremonyModule = {
         candle.lit = true;
         if (this._candles.every((item) => item.lit)) {
           this._allLit = true;
-          this._startDarkPhase();
+          this._onAllCandlesLit();
         }
         this._draw();
         return;
@@ -231,33 +285,10 @@ const CeremonyModule = {
     if (!this.overlay) {
       return;
     }
-
-    if (!this._allLit || this._allBlown) {
-      this.overlay.style.background = 'rgba(0,0,0,0)';
-      return;
-    }
-
-    const canvasRect = this.canvas.getBoundingClientRect();
-    const scaleX = canvasRect.width / this.canvas.width;
-    const scaleY = canvasRect.height / this.canvas.height;
-    const gradients = this._candles
-      .filter((candle) => candle.lit && !candle.blown)
-      .map((candle) => {
-        const size = candle.img
-          ? Utils.getDecorationRenderSize(candle.img, this._layout.frame, candle.scale || 0.18)
-          : { width: this._layout.frame.width * 0.08, height: this._layout.frame.width * 0.16 };
-        const glowX = canvasRect.left + candle.absX * scaleX;
-        const glowY = canvasRect.top + (candle.absY - size.height * 0.58) * scaleY;
-        const radius = Math.max(size.width * scaleX, size.height * scaleY) * 1.8;
-        return `radial-gradient(circle at ${glowX}px ${glowY}px, rgba(255,236,192,0.24) 0px, rgba(255,198,98,0.14) ${radius * 0.18}px, rgba(255,160,58,0.08) ${radius * 0.42}px, rgba(0,0,0,0) ${radius}px)`;
-      });
-
-    this.overlay.style.background = `${gradients.join(',')}, rgba(10, 8, 14, 0.82)`;
+    this.overlay.style.background = 'rgba(0,0,0,0)';
   },
 
-  _startDarkPhase() {
-    this.overlay.classList.add('dark');
-    this._updateDarkOverlay();
+  _onAllCandlesLit() {
     this.hintEl.textContent = '默念愿望后，点击按钮开始吹蜡烛';
     setTimeout(() => {
       this.wishText.classList.remove('hidden');
@@ -332,13 +363,11 @@ const CeremonyModule = {
 
   _onAllBlown() {
     this._allBlown = true;
+    this._lightsOff = false;
     this.wishText.classList.add('hidden');
     this.actionBtn.classList.add('hidden');
     this.hintEl.textContent = '';
     this._draw();
-
-    this.overlay.style.transition = 'background 0.9s ease';
-    this.overlay.classList.remove('dark');
     this.overlay.style.background = 'rgba(0,0,0,0)';
 
     setTimeout(() => {
@@ -351,6 +380,7 @@ const CeremonyModule = {
     this._allLit = false;
     this._allBlown = false;
     this._blowPhaseStarted = false;
+    this._lightsOff = false;
     this._resetUi();
     cancelAnimationFrame(this._animationFrame);
     this._cleanupFns.forEach((cleanup) => cleanup());

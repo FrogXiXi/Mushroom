@@ -68,6 +68,7 @@ const CreamMakingModule = {
     this.bowlArea = document.getElementById('cream-bowl-area');
     this.liquid = document.getElementById('cream-liquid');
     this.picker = document.getElementById('color-picker');
+    this.progressWrap = document.getElementById('cream-progress');
     this.nextBtn = document.getElementById('cream-making-next');
     this.progressFill = document.querySelector('#cream-progress .cream-progress-fill');
     this.progressText = document.querySelector('#cream-progress .cream-progress-text');
@@ -100,7 +101,7 @@ const CreamMakingModule = {
     this.nextBtn.classList.add('hidden');
     this.nextBtn.onclick = null;
     this.eggTool.style.visibility = 'visible';
-    this.applyStage.classList.add('hidden');
+    this._setCoatStageLayout(false);
     this.spatulaTool.classList.add('hidden');
     this.spatulaTool.classList.remove('dragging');
   },
@@ -768,6 +769,13 @@ const CreamMakingModule = {
     this.mixerTool.classList.toggle('active', active);
   },
 
+  _setCoatStageLayout(active) {
+    this.area.classList.toggle('hidden', active);
+    this.picker.classList.toggle('hidden', active);
+    this.progressWrap.classList.toggle('hidden', active);
+    this.applyStage.classList.toggle('hidden', !active);
+  },
+
   _getAreaPoint(event) {
     const source = event.changedTouches && event.changedTouches.length > 0
       ? event.changedTouches[0]
@@ -898,7 +906,7 @@ const CreamMakingModule = {
     this.step = 'coat';
     this._setMixerActive(false);
     this._setHint('奶油打发完成，拖动抹刀把奶油盖到蛋糕胚上');
-    this.applyStage.classList.remove('hidden');
+    this._setCoatStageLayout(true);
     this.spatulaTool.classList.remove('hidden');
     this._resizeApplyCanvas();
     this._setupApplyPreview();
