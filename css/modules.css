@@ -632,7 +632,9 @@
   background: rgba(0,0,0,0);
   transition: background 1s ease, opacity 1s ease;
   pointer-events: none;
-  z-index: 12;
+  z-index: 22;
+  backdrop-filter: blur(2px) brightness(0.76) saturate(0.82);
+  will-change: background;
 }
 .ceremony-overlay.dark {
   background: rgba(12, 8, 20, 0.62);

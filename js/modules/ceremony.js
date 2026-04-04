@@ -125,7 +125,7 @@ const CeremonyModule = {
     });
 
     if (this._lightsOff && !this._allBlown) {
-      this._drawLightsOffMask();
+      this._drawSceneCandlelight();
     }
 
     // 绘制蜡烛和火焰
@@ -177,30 +177,27 @@ const CeremonyModule = {
     this._updateDarkOverlay();
   },
 
-  _drawLightsOffMask() {
+  _drawSceneCandlelight() {
     if (!this._layout?.frame) {
       return;
     }
 
     const frame = this._layout.frame;
     const centerX = frame.x + frame.width / 2;
-    const centerY = frame.y + frame.height * 0.5;
-    const cakeRadius = Math.max(frame.width, frame.height) * 0.82;
+    const centerY = frame.y + frame.height * 0.48;
+    const cakeRadius = Math.max(frame.width, frame.height) * 0.78;
 
     this.ctx.save();
-    this.ctx.fillStyle = 'rgba(8, 7, 12, 0.82)';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.globalCompositeOperation = 'screen';
 
-    this.ctx.globalCompositeOperation = 'destination-out';
-
-    const cakeGlow = this.ctx.createRadialGradient(centerX, centerY, cakeRadius * 0.1, centerX, centerY, cakeRadius);
-    cakeGlow.addColorStop(0, 'rgba(255,255,255,0.68)');
-    cakeGlow.addColorStop(0.36, 'rgba(255,255,255,0.28)');
-    cakeGlow.addColorStop(0.72, 'rgba(255,255,255,0.12)');
-    cakeGlow.addColorStop(1, 'rgba(255,255,255,0)');
+    const cakeGlow = this.ctx.createRadialGradient(centerX, centerY, cakeRadius * 0.08, centerX, centerY, cakeRadius);
+    cakeGlow.addColorStop(0, 'rgba(255, 239, 205, 0.18)');
+    cakeGlow.addColorStop(0.34, 'rgba(255, 221, 173, 0.12)');
+    cakeGlow.addColorStop(0.7, 'rgba(255, 196, 120, 0.06)');
+    cakeGlow.addColorStop(1, 'rgba(255, 172, 92, 0)');
     this.ctx.fillStyle = cakeGlow;
     this.ctx.beginPath();
-    this.ctx.ellipse(centerX, centerY, cakeRadius * 0.94, cakeRadius * 0.78, 0, 0, Math.PI * 2);
+    this.ctx.ellipse(centerX, centerY, cakeRadius * 0.96, cakeRadius * 0.76, 0, 0, Math.PI * 2);
     this.ctx.fill();
 
     this._candles.forEach((candle) => {
@@ -211,15 +208,16 @@ const CeremonyModule = {
         ? Utils.getDecorationRenderSize(candle.img, this._layout.frame, candle.scale || 0.18)
         : { width: this._layout.frame.width * 0.08, height: this._layout.frame.width * 0.16 };
       const glowX = candle.absX;
-      const glowY = candle.absY - size.height * 0.58;
-      const glowRadius = Math.max(size.width, size.height) * 2.6;
-      const glow = this.ctx.createRadialGradient(glowX, glowY, glowRadius * 0.08, glowX, glowY, glowRadius);
-      glow.addColorStop(0, 'rgba(255,255,255,0.82)');
-      glow.addColorStop(0.48, 'rgba(255,255,255,0.28)');
-      glow.addColorStop(1, 'rgba(255,255,255,0)');
+      const glowY = candle.absY - size.height * 0.24;
+      const glowRadius = Math.max(size.width, size.height) * 2.1;
+      const glow = this.ctx.createRadialGradient(glowX, glowY - size.height * 0.3, glowRadius * 0.06, glowX, glowY, glowRadius);
+      glow.addColorStop(0, 'rgba(255, 247, 224, 0.24)');
+      glow.addColorStop(0.38, 'rgba(255, 218, 148, 0.16)');
+      glow.addColorStop(0.72, 'rgba(255, 182, 98, 0.08)');
+      glow.addColorStop(1, 'rgba(255, 160, 80, 0)');
       this.ctx.fillStyle = glow;
       this.ctx.beginPath();
-      this.ctx.arc(glowX, glowY, glowRadius, 0, Math.PI * 2);
+      this.ctx.ellipse(glowX, glowY, glowRadius * 0.92, glowRadius * 0.7, 0, 0, Math.PI * 2);
       this.ctx.fill();
     });
 
@@ -308,12 +306,13 @@ const CeremonyModule = {
           : { width: this._layout.frame.width * 0.08, height: this._layout.frame.width * 0.16 };
         const glowX = canvasRect.left + candle.absX * scaleX;
         const glowY = canvasRect.top + (candle.absY - size.height * 0.56) * scaleY;
-        const radius = Math.max(size.width * scaleX, size.height * scaleY) * 2.3;
-        return `radial-gradient(circle at ${glowX}px ${glowY}px, rgba(255,210,140,0.34) 0px, rgba(255,177,84,0.18) ${radius * 0.22}px, rgba(255,138,38,0.08) ${radius * 0.48}px, rgba(0,0,0,0) ${radius}px)`;
+        const radius = Math.max(size.width * scaleX, size.height * scaleY) * 2.65;
+        return `radial-gradient(circle at ${glowX}px ${glowY}px, rgba(255,236,198,0.24) 0px, rgba(255,206,128,0.16) ${radius * 0.2}px, rgba(78,53,25,0.14) ${radius * 0.5}px, rgba(10,8,14,0) ${radius}px)`;
       });
 
-    const sceneGlow = `radial-gradient(circle at ${cakeCenterX}px ${cakeCenterY}px, rgba(255,239,205,0.14) 0px, rgba(36,30,23,0.1) ${cakeRadius * 0.36}px, rgba(8,7,12,0.68) ${cakeRadius * 0.84}px, rgba(6,4,10,0.88) ${cakeRadius * 1.5}px)`;
-    this.overlay.style.background = `${candleGlows.join(',')}${candleGlows.length ? ', ' : ''}${sceneGlow}`;
+    const sceneGlow = `radial-gradient(ellipse at ${cakeCenterX}px ${cakeCenterY}px, rgba(255,245,219,0.08) 0px, rgba(74,54,29,0.16) ${cakeRadius * 0.26}px, rgba(17,13,20,0.62) ${cakeRadius * 0.6}px, rgba(5,4,9,0.9) ${cakeRadius * 1.34}px)`;
+    const roomDarkness = 'linear-gradient(rgba(8, 6, 12, 0.68), rgba(8, 6, 12, 0.78))';
+    this.overlay.style.background = `${candleGlows.join(',')}${candleGlows.length ? ', ' : ''}${sceneGlow}, ${roomDarkness}`;
   },
 
   _onAllCandlesLit() {
