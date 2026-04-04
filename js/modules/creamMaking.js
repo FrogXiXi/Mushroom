@@ -491,7 +491,7 @@ const CreamMakingModule = {
       this._draggingSpatula = true;
       this.spatulaTool.classList.add('dragging');
       const previewPoint = this._getPreviewPoint(event);
-      this._placeToolInPreview(this.spatulaTool, previewPoint.x - this.spatulaTool.offsetWidth / 2, previewPoint.y - this.spatulaTool.offsetHeight / 2);
+      this._placeSpatulaInPreview(previewPoint);
       this._lastSpatulaPoint = this._getSpatulaPaintPoint();
     };
 
@@ -501,7 +501,7 @@ const CreamMakingModule = {
       }
       event.preventDefault();
       const previewPoint = this._getPreviewPoint(event);
-      this._placeToolInPreview(this.spatulaTool, previewPoint.x - this.spatulaTool.offsetWidth / 2, previewPoint.y - this.spatulaTool.offsetHeight / 2);
+      this._placeSpatulaInPreview(previewPoint);
 
       const canvasPoint = this._getSpatulaPaintPoint();
       if (!Utils.pointInMask(this._applyMaskCanvas, canvasPoint.x, canvasPoint.y)) {
@@ -818,9 +818,17 @@ const CreamMakingModule = {
   _getSpatulaPaintPoint() {
     const previewRect = this.applyPreview.getBoundingClientRect();
     const spatulaRect = this.spatulaTool.getBoundingClientRect();
+    const contactOffset = this._getSpatulaContactOffset();
     return {
-      x: Utils.clamp((spatulaRect.left - previewRect.left + spatulaRect.width * 0.18) * (this.applyCanvas.width / previewRect.width), 0, this.applyCanvas.width),
-      y: Utils.clamp((spatulaRect.top - previewRect.top + spatulaRect.height * 0.18) * (this.applyCanvas.height / previewRect.height), 0, this.applyCanvas.height),
+      x: Utils.clamp((spatulaRect.left - previewRect.left + contactOffset.x) * (this.applyCanvas.width / previewRect.width), 0, this.applyCanvas.width),
+      y: Utils.clamp((spatulaRect.top - previewRect.top + contactOffset.y) * (this.applyCanvas.height / previewRect.height), 0, this.applyCanvas.height),
+    };
+  },
+
+  _getSpatulaContactOffset() {
+    return {
+      x: this.spatulaTool.offsetWidth * 0.18,
+      y: this.spatulaTool.offsetHeight * 0.18,
     };
   },
 
@@ -836,6 +844,16 @@ const CreamMakingModule = {
     const maxTop = this.applyPreview.clientHeight - tool.offsetHeight;
     tool.style.left = `${Utils.clamp(left, 0, maxLeft)}px`;
     tool.style.top = `${Utils.clamp(top, 0, maxTop)}px`;
+  },
+
+  _placeSpatulaInPreview(point) {
+    const contactOffset = this._getSpatulaContactOffset();
+    const minLeft = -contactOffset.x;
+    const minTop = -contactOffset.y;
+    const maxLeft = this.applyPreview.clientWidth - contactOffset.x;
+    const maxTop = this.applyPreview.clientHeight - contactOffset.y;
+    this.spatulaTool.style.left = `${Utils.clamp(point.x - contactOffset.x, minLeft, maxLeft)}px`;
+    this.spatulaTool.style.top = `${Utils.clamp(point.y - contactOffset.y, minTop, maxTop)}px`;
   },
 
   _getMixerTipPoint() {
