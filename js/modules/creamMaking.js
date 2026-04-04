@@ -827,8 +827,8 @@ const CreamMakingModule = {
 
   _getSpatulaContactOffset() {
     return {
-      x: this.spatulaTool.offsetWidth * 0.82,
-      y: this.spatulaTool.offsetHeight * 0.82,
+      x: this.spatulaTool.offsetWidth * 0.18,
+      y: this.spatulaTool.offsetHeight * 0.18,
     };
   },
 
