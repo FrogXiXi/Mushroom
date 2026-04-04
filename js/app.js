@@ -123,6 +123,43 @@ const App = {
     this.saveState();
   },
 
+  hasDraftCake() {
+    const serialized = this.serializeState();
+    const defaults = this.getDefaultState();
+    return serialized.lastModule !== defaults.lastModule
+      || serialized.cakeType !== defaults.cakeType
+      || serialized.creamColor?.id !== defaults.creamColor.id
+      || (serialized.paintStrokes || []).length > 0
+      || (serialized.decorations || []).length > 0
+      || serialized.magicCardRevealed !== defaults.magicCardRevealed
+      || serialized.albumReminderPending !== defaults.albumReminderPending;
+  },
+
+  restartCreation() {
+    const message = this.hasDraftCake()
+      ? '要清空当前还没做完的蛋糕，重头开始吗？已保存到相册的照片不会删除。'
+      : '要回到开头重新制作蛋糕吗？';
+
+    if (typeof window !== 'undefined' && !window.confirm(message)) {
+      return;
+    }
+
+    this.resetState();
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
+  },
+
+  updateGlobalActionButtons() {
+    const restartBtn = document.getElementById('global-restart-btn');
+    if (!restartBtn) {
+      return;
+    }
+
+    const shouldShowRestart = this.currentModule !== 'mod-cover';
+    restartBtn.classList.toggle('hidden', !shouldShowRestart);
+  },
+
   /**
    * 切换到指定模块
    */
@@ -156,6 +193,7 @@ const App = {
       this.currentModule = moduleId;
       this.state.lastModule = moduleId;
       this.saveState();
+      this.updateGlobalActionButtons();
 
       // 初始化新模块
       const nextMod = this.modules[moduleId];
@@ -171,11 +209,18 @@ const App = {
   start() {
     this.loadState();
     const albumBtn = document.getElementById('global-album-btn');
+    const restartBtn = document.getElementById('global-restart-btn');
     if (albumBtn) {
       albumBtn.onclick = () => {
         AlbumModule.open();
       };
     }
+    if (restartBtn) {
+      restartBtn.onclick = () => {
+        this.restartCreation();
+      };
+    }
+    this.updateGlobalActionButtons();
     // 初始化封面模块
     const coverMod = this.modules['mod-cover'];
     if (coverMod && coverMod.init) {
