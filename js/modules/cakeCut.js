@@ -267,10 +267,6 @@ const CakeCutModule = {
         Utils.showToast('先把切好的蛋糕拖到盘子里吧～', 1800);
         return;
       }
-
-      App.state.albumReminderPending = true;
-      App.saveState();
-      Utils.showToast('“魔法贺卡”有变动，记得去相册看看～', 1800);
       setTimeout(() => {
         App.goTo('mod-ending');
       }, 900);
@@ -400,17 +396,51 @@ const CakeCutModule = {
   },
 
   _findTargetPieceIndex() {
-    const midPoint = {
-      x: (this._cutLine[0].x + this._cutLine[this._cutLine.length - 1].x) / 2,
-      y: (this._cutLine[0].y + this._cutLine[this._cutLine.length - 1].y) / 2,
-    };
-
+    const samples = this._getCutLineSamples();
+    let bestIdx = -1;
+    let bestHits = 0;
     for (let index = this._pieces.length - 1; index >= 0; index -= 1) {
-      if (this._pointInPiece(this._pieces[index], midPoint)) {
-        return index;
+      let hits = 0;
+      for (const sample of samples) {
+        if (this._pointInPiece(this._pieces[index], sample)) {
+          hits += 1;
+        }
+      }
+
+      if (hits > bestHits) {
+        bestHits = hits;
+        bestIdx = index;
       }
     }
-    return -1;
+
+    return bestHits > 0 ? bestIdx : -1;
+  },
+
+  _getCutLineSamples() {
+    if (this._cutLine.length === 0) {
+      return [];
+    }
+
+    const samples = [];
+    for (let index = 0; index < this._cutLine.length - 1; index += 1) {
+      const start = this._cutLine[index];
+      const end = this._cutLine[index + 1];
+      const distance = Utils.distance(start.x, start.y, end.x, end.y);
+      const steps = Math.max(1, Math.ceil(distance / 12));
+
+      for (let step = 0; step <= steps; step += 1) {
+        const progress = step / steps;
+        samples.push({
+          x: start.x + (end.x - start.x) * progress,
+          y: start.y + (end.y - start.y) * progress,
+        });
+      }
+    }
+
+    if (samples.length === 0) {
+      samples.push(this._cutLine[0]);
+    }
+    return samples;
   },
 
   _splitPiece(piece, globalLine) {

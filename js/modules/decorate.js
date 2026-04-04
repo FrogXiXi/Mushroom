@@ -29,6 +29,7 @@ const DecorateModule = {
 		this.itemsContainer = document.getElementById('decorate-items');
 		this.paintTools = document.getElementById('decorate-paint-tools');
 		this.tipEl = document.getElementById('decorate-tip');
+		this.selectionTools = document.getElementById('decorate-selection-tools');
 		this.strokes = (App.state.paintStrokes || []).map((stroke) => ({
 			...stroke,
 			points: (stroke.points || []).map((point) => ({ ...point })),
@@ -43,6 +44,7 @@ const DecorateModule = {
 		this._setupPaintControls();
 		this._bindCanvasEvents();
 		this._bindUiEvents();
+		this._updateSelectionTools();
 		this._render();
 	},
 
@@ -90,16 +92,17 @@ const DecorateModule = {
 				this.activeTab = tab.dataset.tab;
 				this.paintTools.classList.toggle('hidden', this.activeTab !== 'paint');
 				this.carousel.classList.toggle('hidden', this.activeTab === 'paint');
+				this._updateSelectionTools();
 				this.tipEl.textContent = this.activeTab === 'paint'
 					? '在蛋糕上继续涂鸦，装饰会同步预览在成品上。'
-					: '按住下方素材直接拖到蛋糕上，也可以继续移动、缩放和旋转已有装饰。';
+					: '按住下方素材直接拖到蛋糕上；手机端可先点选素材，再用下方按钮放大、缩小、旋转或删除。';
 				this._renderItems();
 				this._render();
 			};
 		});
 		this.paintTools.classList.toggle('hidden', this.activeTab !== 'paint');
 		this.carousel.classList.toggle('hidden', this.activeTab === 'paint');
-		this.tipEl.textContent = '按住下方素材直接拖到蛋糕上，也可以继续移动、缩放和旋转已有装饰。';
+		this.tipEl.textContent = '按住下方素材直接拖到蛋糕上；手机端可先点选素材，再用下方按钮放大、缩小、旋转或删除。';
 		this._renderItems();
 	},
 
@@ -153,6 +156,11 @@ const DecorateModule = {
 			this._syncState();
 			this._render();
 		};
+		document.getElementById('decorate-scale-down').onclick = () => this._nudgeSelectedElementScale(-0.018);
+		document.getElementById('decorate-scale-up').onclick = () => this._nudgeSelectedElementScale(0.018);
+		document.getElementById('decorate-rotate-left').onclick = () => this._nudgeSelectedElementRotation(-0.12);
+		document.getElementById('decorate-rotate-right').onclick = () => this._nudgeSelectedElementRotation(0.12);
+		document.getElementById('decorate-delete-selected').onclick = () => this._deleteSelectedElement();
 		document.getElementById('decorate-done').onclick = () => {
 			if (!this.elements.some((item) => item.isCandle)) {
 				Utils.showToast('请至少添加一根蜡烛哦～', 1800);
@@ -169,7 +177,7 @@ const DecorateModule = {
 			return;
 		}
 
-		const items = CONFIG.decorations[this.activeTab] || [];
+		const items = this._getSortedItems();
 		this.itemsContainer.innerHTML = '';
 		items.forEach((item) => {
 			const node = document.createElement('button');
@@ -181,6 +189,32 @@ const DecorateModule = {
 			};
 			this._bindPaletteItem(node, item);
 			this.itemsContainer.appendChild(node);
+		});
+	},
+
+	_getSortedItems() {
+		const items = [...(CONFIG.decorations[this.activeTab] || [])];
+		if (this.activeTab !== 'candles') {
+			return items;
+		}
+
+		const groupOrder = (item) => {
+			if (item.id.startsWith('mini_')) return 0;
+			if (item.id.startsWith('slim_')) return 1;
+			if (item.id.startsWith('num_')) return 2;
+			return 3;
+		};
+		const getNumericOrder = (item) => {
+			const match = item.id.match(/_(\d+)$/);
+			return match ? parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+		};
+
+		return items.sort((left, right) => {
+			const groupDiff = groupOrder(left) - groupOrder(right);
+			if (groupDiff !== 0) {
+				return groupDiff;
+			}
+			return getNumericOrder(left) - getNumericOrder(right);
 		});
 	},
 
@@ -284,14 +318,28 @@ const DecorateModule = {
 			src: item.src,
 			nx: (point.x - this._layout.frame.x) / this._layout.frame.width,
 			ny: (point.y - this._layout.frame.y) / this._layout.frame.height,
-			scale: 0.18,
+			scale: this._getInitialElementScale(item),
 			rotation: 0,
 			isCandle: !!item.isCandle,
 			img: image,
 		});
 		this._selectedIdx = this.elements.length - 1;
 		this._syncState();
+		this._updateSelectionTools();
 		this._render();
+	},
+
+	_getInitialElementScale(item) {
+		if (item.id.startsWith('mini_')) {
+			return 0.12;
+		}
+		if (item.id.startsWith('slim_') || item.id.startsWith('num_')) {
+			return 0.16;
+		}
+		if (item.id.startsWith('sugar_')) {
+			return 0.1;
+		}
+		return 0.18;
 	},
 
 	_bindCanvasEvents() {
@@ -329,14 +377,17 @@ const DecorateModule = {
 						this.elements.splice(this._selectedIdx, 1);
 						this._selectedIdx = -1;
 						this._syncState();
+						this._updateSelectionTools();
 						this._render();
 					}
 				}, 900);
+				this._updateSelectionTools();
 				this._render();
 				return;
 			}
 
 			this._selectedIdx = -1;
+			this._updateSelectionTools();
 			if (this.activeTab !== 'paint' || !Utils.pointInMask(this._maskCanvas, point.x, point.y)) {
 				this._render();
 				return;
@@ -409,6 +460,7 @@ const DecorateModule = {
 			this._drawing = false;
 			this._draggingElement = false;
 			this._currentStroke = null;
+			this._updateSelectionTools();
 			this._render();
 		};
 
@@ -471,12 +523,16 @@ const DecorateModule = {
 		};
 	},
 
+	_getElementRenderSize(element) {
+		return Utils.getDecorationRenderSize(element.img, this._layout.frame, element.scale || 0.18);
+	},
+
 	_hitTestElement(point) {
 		for (let index = this.elements.length - 1; index >= 0; index -= 1) {
 			const element = this.elements[index];
 			const position = this._getElementPosition(element);
-			const size = this._layout.frame.width * (element.scale || 0.18);
-			if (Math.abs(point.x - position.x) <= size * 0.55 && Math.abs(point.y - position.y) <= size * 0.55) {
+			const size = this._getElementRenderSize(element);
+			if (Math.abs(point.x - position.x) <= size.width * 0.56 && Math.abs(point.y - position.y) <= size.height * 0.56) {
 				return index;
 			}
 		}
@@ -512,21 +568,60 @@ const DecorateModule = {
 
 	_renderElements() {
 		this.elements.forEach((element, index) => {
-			const size = this._layout.frame.width * (element.scale || 0.18);
+			const size = this._getElementRenderSize(element);
 			const position = this._getElementPosition(element);
 			this.ctx.save();
 			this.ctx.translate(position.x, position.y);
 			this.ctx.rotate(element.rotation || 0);
-			this.ctx.drawImage(element.img, -size / 2, -size / 2, size, size);
+			this.ctx.drawImage(element.img, -size.width / 2, -size.height / 2, size.width, size.height);
 			if (index === this._selectedIdx) {
 				this.ctx.strokeStyle = 'rgba(139,90,43,0.6)';
 				this.ctx.lineWidth = 2;
 				this.ctx.setLineDash([6, 4]);
-				this.ctx.strokeRect(-size / 2 - 6, -size / 2 - 6, size + 12, size + 12);
+				this.ctx.strokeRect(-size.width / 2 - 6, -size.height / 2 - 6, size.width + 12, size.height + 12);
 				this.ctx.setLineDash([]);
 			}
 			this.ctx.restore();
 		});
+	},
+
+	_updateSelectionTools() {
+		if (!this.selectionTools) {
+			return;
+		}
+		const shouldShow = this.activeTab !== 'paint' && this._selectedIdx >= 0 && this._selectedIdx < this.elements.length;
+		this.selectionTools.classList.toggle('hidden', !shouldShow);
+	},
+
+	_nudgeSelectedElementScale(delta) {
+		if (this._selectedIdx < 0) {
+			return;
+		}
+		const element = this.elements[this._selectedIdx];
+		element.scale = Utils.clamp((element.scale || 0.18) + delta, 0.08, 0.5);
+		this._syncState();
+		this._render();
+	},
+
+	_nudgeSelectedElementRotation(delta) {
+		if (this._selectedIdx < 0) {
+			return;
+		}
+		const element = this.elements[this._selectedIdx];
+		element.rotation = (element.rotation || 0) + delta;
+		this._syncState();
+		this._render();
+	},
+
+	_deleteSelectedElement() {
+		if (this._selectedIdx < 0) {
+			return;
+		}
+		this.elements.splice(this._selectedIdx, 1);
+		this._selectedIdx = -1;
+		this._syncState();
+		this._updateSelectionTools();
+		this._render();
 	},
 
 	_syncState() {

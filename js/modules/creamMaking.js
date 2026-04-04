@@ -26,6 +26,8 @@ const CreamMakingModule = {
   _animationFrame: null,
   _eggAdded: false,
   _colorMixed: false,
+  _bottleDrag: null,
+  _bottleGhost: null,
 
   async init() {
     this._cacheDom();
@@ -90,6 +92,8 @@ const CreamMakingModule = {
     this._lastSpatulaPoint = null;
     this._eggAdded = false;
     this._colorMixed = false;
+    this._bottleDrag = null;
+    this._destroyBottleGhost();
     App.state.creamColor = App.state.creamColor || CONFIG.creamColors[0];
     App.saveState();
 
@@ -181,35 +185,141 @@ const CreamMakingModule = {
         this.src = `${CONFIG.imgBase + color.src}.png`;
       };
 
-      option.onclick = async () => {
-        if (this.step === 'egg' || this.step === 'egg-anim') {
-          Utils.showToast('先把鸡蛋打进碗里哦～', 1200);
-          return;
-        }
-        if (this.step === 'drop-color') {
-          return;
-        }
-
-        this.picker.querySelectorAll('.bottle-option').forEach((item) => item.classList.remove('active'));
-        option.classList.add('active');
-        App.state.creamColor = color;
-        App.saveState();
-        await this._loadTargetCakeLayers(color);
-
-        if (this.step === 'coat' || this.step === 'ready') {
-          this._renderApplyPreview();
-          return;
-        }
-
-        this._playColorDrop(color);
-      };
+      this._bindBottleDrag(option, color);
       this.picker.appendChild(option);
     });
   },
 
+  _bindBottleDrag(option, color) {
+    const usePointer = typeof window !== 'undefined' && 'PointerEvent' in window;
+
+    const start = (event) => {
+      if (event.button != null && event.button !== 0) {
+        return;
+      }
+
+      if (this.step === 'egg' || this.step === 'egg-anim') {
+        Utils.showToast('先把鸡蛋打进碗里哦～', 1200);
+        return;
+      }
+      if (this.step === 'drop-color') {
+        return;
+      }
+      if (this.step !== 'color') {
+        Utils.showToast('这一阶段不用再倒色素啦～', 1200);
+        return;
+      }
+
+      event.preventDefault();
+      option.classList.add('dragging');
+      this._bottleDrag = { color, option };
+      this._createBottleGhost(color, event);
+    };
+
+    const move = (event) => {
+      if (!this._bottleDrag) {
+        return;
+      }
+      event.preventDefault();
+      this._moveBottleGhost(event);
+    };
+
+    const end = async (event) => {
+      if (!this._bottleDrag) {
+        return;
+      }
+
+      const { color: activeColor, option: activeOption } = this._bottleDrag;
+      activeOption.classList.remove('dragging');
+      this._destroyBottleGhost();
+      this._bottleDrag = null;
+
+      const point = this._getAreaPoint(event);
+      if (this.step !== 'color' || !this._isPointInBowl(point)) {
+        return;
+      }
+
+      this.picker.querySelectorAll('.bottle-option').forEach((item) => item.classList.remove('active'));
+      activeOption.classList.add('active');
+      App.state.creamColor = activeColor;
+      App.saveState();
+      await this._loadTargetCakeLayers(activeColor);
+      this._playColorDrop(activeColor);
+    };
+
+    if (usePointer) {
+      option.addEventListener('pointerdown', start, { passive: false });
+      document.addEventListener('pointermove', move, { passive: false });
+      document.addEventListener('pointerup', end);
+      document.addEventListener('pointercancel', end);
+
+      this._cleanupFns.push(() => {
+        option.removeEventListener('pointerdown', start);
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', end);
+        document.removeEventListener('pointercancel', end);
+      });
+      return;
+    }
+
+    option.addEventListener('mousedown', start);
+    option.addEventListener('touchstart', start, { passive: false });
+    document.addEventListener('mousemove', move, { passive: false });
+    document.addEventListener('touchmove', move, { passive: false });
+    document.addEventListener('mouseup', end);
+    document.addEventListener('touchend', end);
+
+    this._cleanupFns.push(() => {
+      option.removeEventListener('mousedown', start);
+      option.removeEventListener('touchstart', start);
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('touchmove', move);
+      document.removeEventListener('mouseup', end);
+      document.removeEventListener('touchend', end);
+    });
+  },
+
+  _createBottleGhost(color, event) {
+    this._destroyBottleGhost();
+    const ghost = document.createElement('div');
+    ghost.className = 'bottle-drag-ghost';
+    ghost.innerHTML = `<img src="${CONFIG.imgBase + color.src}.webp" alt="${color.name}">`;
+    ghost.querySelector('img').onerror = function onGhostError() {
+      this.src = `${CONFIG.imgBase + color.src}.png`;
+    };
+    document.body.appendChild(ghost);
+    this._bottleGhost = ghost;
+    this._moveBottleGhost(event);
+  },
+
+  _moveBottleGhost(event) {
+    if (!this._bottleGhost) {
+      return;
+    }
+
+    const source = event.changedTouches && event.changedTouches.length > 0
+      ? event.changedTouches[0]
+      : event.touches && event.touches.length > 0
+        ? event.touches[0]
+        : event;
+    this._bottleGhost.style.left = `${source.clientX}px`;
+    this._bottleGhost.style.top = `${source.clientY}px`;
+  },
+
+  _destroyBottleGhost() {
+    if (this._bottleGhost) {
+      this._bottleGhost.remove();
+      this._bottleGhost = null;
+    }
+  },
+
   _bindEggDrag() {
+    const usePointer = typeof window !== 'undefined' && 'PointerEvent' in window;
     const start = (event) => {
       if (this.step !== 'egg') {
+        return;
+      }
+      if (event.button != null && event.button !== 0) {
         return;
       }
       event.preventDefault();
@@ -240,6 +350,21 @@ const CreamMakingModule = {
       }
     };
 
+    if (usePointer) {
+      this.eggTool.addEventListener('pointerdown', start, { passive: false });
+      document.addEventListener('pointermove', move, { passive: false });
+      document.addEventListener('pointerup', end);
+      document.addEventListener('pointercancel', end);
+
+      this._cleanupFns.push(() => {
+        this.eggTool.removeEventListener('pointerdown', start);
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', end);
+        document.removeEventListener('pointercancel', end);
+      });
+      return;
+    }
+
     this.eggTool.addEventListener('mousedown', start);
     this.eggTool.addEventListener('touchstart', start, { passive: false });
     document.addEventListener('mousemove', move, { passive: false });
@@ -258,8 +383,12 @@ const CreamMakingModule = {
   },
 
   _bindMixerDrag() {
+    const usePointer = typeof window !== 'undefined' && 'PointerEvent' in window;
     const start = (event) => {
       if (this.step !== 'whip') {
+        return;
+      }
+      if (event.button != null && event.button !== 0) {
         return;
       }
       event.preventDefault();
@@ -275,12 +404,13 @@ const CreamMakingModule = {
       const point = this._getAreaPoint(event);
       this._placeTool(this.mixerTool, point.x - this.mixerTool.offsetWidth / 2, point.y - this.mixerTool.offsetHeight / 2);
 
-      if (!this._isPointInBowl(point)) {
+      const tipPoint = this._getMixerTipPoint();
+      if (!this._isPointInBowl(tipPoint)) {
         this._lastAngle = null;
         return;
       }
 
-      const angle = this._getBowlAngle(point);
+      const angle = this._getBowlAngle(tipPoint);
       if (this._lastAngle == null) {
         this._lastAngle = angle;
         return;
@@ -315,6 +445,21 @@ const CreamMakingModule = {
       this._resetTool(this.mixerTool);
     };
 
+    if (usePointer) {
+      this.mixerTool.addEventListener('pointerdown', start, { passive: false });
+      document.addEventListener('pointermove', move, { passive: false });
+      document.addEventListener('pointerup', end);
+      document.addEventListener('pointercancel', end);
+
+      this._cleanupFns.push(() => {
+        this.mixerTool.removeEventListener('pointerdown', start);
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', end);
+        document.removeEventListener('pointercancel', end);
+      });
+      return;
+    }
+
     this.mixerTool.addEventListener('mousedown', start);
     this.mixerTool.addEventListener('touchstart', start, { passive: false });
     document.addEventListener('mousemove', move, { passive: false });
@@ -333,8 +478,12 @@ const CreamMakingModule = {
   },
 
   _bindSpatulaDrag() {
+    const usePointer = typeof window !== 'undefined' && 'PointerEvent' in window;
     const start = (event) => {
       if (this.step !== 'coat') {
+        return;
+      }
+      if (event.button != null && event.button !== 0) {
         return;
       }
       event.preventDefault();
@@ -374,6 +523,21 @@ const CreamMakingModule = {
       this.spatulaTool.classList.remove('dragging');
       this._resetTool(this.spatulaTool);
     };
+
+    if (usePointer) {
+      this.spatulaTool.addEventListener('pointerdown', start, { passive: false });
+      document.addEventListener('pointermove', move, { passive: false });
+      document.addEventListener('pointerup', end);
+      document.addEventListener('pointercancel', end);
+
+      this._cleanupFns.push(() => {
+        this.spatulaTool.removeEventListener('pointerdown', start);
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', end);
+        document.removeEventListener('pointercancel', end);
+      });
+      return;
+    }
 
     this.spatulaTool.addEventListener('mousedown', start);
     this.spatulaTool.addEventListener('touchstart', start, { passive: false });
@@ -422,7 +586,7 @@ const CreamMakingModule = {
         this._colorMixed = false;
         this._renderLiquid();
         this.step = 'color';
-        this._setHint('鸡蛋已经打进碗里，选择一个色素瓶给奶油上色');
+        this._setHint('鸡蛋已经打进碗里，把一个色素瓶拖进碗里给奶油上色');
       }
     };
 
@@ -591,7 +755,7 @@ const CreamMakingModule = {
       : 0;
     this._updateCoverProgress();
 
-    if (this.coverProgress >= 72 && this.step === 'coat') {
+    if (this.coverProgress >= (CONFIG.coatCoverageCompleteThreshold || 99.5) && this.step === 'coat') {
       this._onCoatDone();
     }
   },
@@ -655,6 +819,15 @@ const CreamMakingModule = {
     const maxTop = this.applyPreview.clientHeight - tool.offsetHeight;
     tool.style.left = `${Utils.clamp(left, 0, maxLeft)}px`;
     tool.style.top = `${Utils.clamp(top, 0, maxTop)}px`;
+  },
+
+  _getMixerTipPoint() {
+    const areaRect = this.area.getBoundingClientRect();
+    const mixerRect = this.mixerTool.getBoundingClientRect();
+    return {
+      x: mixerRect.left - areaRect.left + mixerRect.width * 0.5,
+      y: mixerRect.top - areaRect.top + mixerRect.height * 0.86,
+    };
   },
 
   _resetTool(tool) {
@@ -756,6 +929,7 @@ const CreamMakingModule = {
       cancelAnimationFrame(this._animationFrame);
       this._animationFrame = null;
     }
+    this._destroyBottleGhost();
     this._cleanupFns.forEach((cleanup) => cleanup());
     this._cleanupFns = [];
     this.eggTool.style.visibility = 'visible';

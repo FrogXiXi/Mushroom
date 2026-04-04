@@ -38,6 +38,7 @@
       <img src="assets/images/style/doodles/star.png" alt="">
     </picture>
   </div>
+  <button class="global-album-btn" id="global-album-btn" type="button" aria-label="打开相册">相册</button>
   <div id="app">
     <!-- 模块1: 封面 -->
     <section id="mod-cover" class="module active">
@@ -204,6 +205,13 @@
         <button class="carousel-arrow" id="decorate-scroll-right" type="button" aria-label="查看下一组素材">&#8250;</button>
       </div>
       <p class="decorate-tip" id="decorate-tip">按住下方素材直接拖到蛋糕上。双指可旋转缩放，滚轮缩放（Shift+滚轮旋转），长按删除。</p>
+      <div class="decorate-selection-tools hidden" id="decorate-selection-tools">
+        <button class="btn-tool" id="decorate-scale-down" type="button">缩小</button>
+        <button class="btn-tool" id="decorate-scale-up" type="button">放大</button>
+        <button class="btn-tool" id="decorate-rotate-left" type="button">左转</button>
+        <button class="btn-tool" id="decorate-rotate-right" type="button">右转</button>
+        <button class="btn-tool" id="decorate-delete-selected" type="button">删除</button>
+      </div>
       <button class="btn-primary btn-next" id="decorate-done">完成装饰，去许愿</button>
     </section>
 
@@ -219,7 +227,6 @@
             <button class="template-btn active" data-tpl="polaroid">拍立得</button>
             <button class="template-btn" data-tpl="cream_daisy">奶油雏菊</button>
             <button class="template-btn" data-tpl="spring_summer">春尽夏生</button>
-            <button class="template-btn" data-tpl="magic_card">魔法贺卡</button>
           </div>
           <div class="screenshot-actions">
             <button class="btn-primary" id="screenshot-save">保存到相册</button>

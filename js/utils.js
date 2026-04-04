@@ -155,6 +155,30 @@ const Utils = {
     return ((px - cx) ** 2) / (rx ** 2) + ((py - cy) ** 2) / (ry ** 2) <= 1;
   },
 
+  getAspectFitSize(image, longSide) {
+    if (!image || !image.width || !image.height) {
+      return { width: longSide, height: longSide };
+    }
+
+    const aspect = image.width / image.height;
+    if (aspect >= 1) {
+      return {
+        width: longSide,
+        height: longSide / aspect,
+      };
+    }
+
+    return {
+      width: longSide * aspect,
+      height: longSide,
+    };
+  },
+
+  getDecorationRenderSize(image, frame, scale = 0.18) {
+    const longSide = frame.width * scale;
+    return Utils.getAspectFitSize(image, longSide);
+  },
+
   getCakeLayout(canvas, layerImages) {
     const safeLayers = layerImages.filter(Boolean);
     if (safeLayers.length === 0) {
@@ -386,11 +410,11 @@ const Utils = {
         return;
       }
       const position = Utils.getDecorationPosition(item, layout.frame);
-      const size = layout.frame.width * (item.scale || 0.18);
+      const size = Utils.getDecorationRenderSize(image, layout.frame, item.scale || 0.18);
       ctx.save();
       ctx.translate(position.x, position.y);
       ctx.rotate(item.rotation || 0);
-      ctx.drawImage(image, -size / 2, -size / 2, size, size);
+      ctx.drawImage(image, -size.width / 2, -size.height / 2, size.width, size.height);
       ctx.restore();
     });
   },

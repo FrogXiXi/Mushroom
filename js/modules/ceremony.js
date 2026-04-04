@@ -44,6 +44,7 @@ const CeremonyModule = {
   _resetUi() {
     this.overlay.classList.remove('dark');
     this.overlay.style.transition = '';
+    this.overlay.style.background = 'rgba(0,0,0,0)';
     this.wishText.classList.add('hidden');
     this.wishText.classList.remove('anim-breathe');
     this.actionBtn.classList.add('hidden');
@@ -123,24 +124,26 @@ const CeremonyModule = {
 
     // 绘制蜡烛和火焰
     this._candles.forEach((candle) => {
-      const size = this._layout.frame.width * (candle.scale || 0.18);
+      const size = candle.img
+        ? Utils.getDecorationRenderSize(candle.img, this._layout.frame, candle.scale || 0.18)
+        : { width: this._layout.frame.width * 0.08, height: this._layout.frame.width * 0.16 };
+      const candleTop = candle.absY - size.height / 2;
 
       this.ctx.save();
       this.ctx.translate(candle.absX, candle.absY);
       this.ctx.rotate(candle.rotation || 0);
       if (candle.img) {
-        this.ctx.drawImage(candle.img, -size / 2, -size / 2, size, size);
+        this.ctx.drawImage(candle.img, -size.width / 2, -size.height / 2, size.width, size.height);
       } else {
         this.ctx.fillStyle = '#FFB5A7';
-        this.ctx.fillRect(-size * 0.08, -size / 2, size * 0.16, size * 0.88);
+        this.ctx.fillRect(-size.width * 0.18, -size.height / 2, size.width * 0.36, size.height * 0.88);
       }
       this.ctx.restore();
 
       if (candle.lit && !candle.blown) {
-        // 灯光发光效果 — 径向渐变光晕
         const glowX = candle.absX;
-        const glowY = candle.absY - size * 0.55;
-        const glowRadius = size * 1.6;
+        const glowY = candleTop - size.height * 0.08;
+        const glowRadius = Math.max(size.width, size.height) * 0.9;
         this.ctx.save();
         const glow = this.ctx.createRadialGradient(glowX, glowY, 0, glowX, glowY, glowRadius);
         glow.addColorStop(0, 'rgba(255, 200, 80, 0.35)');
@@ -152,23 +155,24 @@ const CeremonyModule = {
         this.ctx.fill();
         this.ctx.restore();
 
-        // 绘制火焰图片（单张静态）
         if (this._flameImg) {
-          const flameWidth = size * 0.34;
+          const flameWidth = Math.max(size.width * 0.34, 18);
           const flameHeight = flameWidth * (this._flameImg.height / this._flameImg.width);
-          this.ctx.drawImage(this._flameImg, candle.absX - flameWidth / 2, candle.absY - size * 0.72, flameWidth, flameHeight);
+          this.ctx.drawImage(this._flameImg, candle.absX - flameWidth / 2, candleTop - flameHeight * 0.84, flameWidth, flameHeight);
         } else {
           this.ctx.fillStyle = 'rgba(255, 211, 84, 0.95)';
           this.ctx.beginPath();
-          this.ctx.ellipse(candle.absX, candle.absY - size * 0.45, size * 0.08, size * 0.14, 0, 0, Math.PI * 2);
+          this.ctx.ellipse(candle.absX, candleTop - size.height * 0.08, size.width * 0.08, size.height * 0.14, 0, 0, Math.PI * 2);
           this.ctx.fill();
         }
       }
     });
+
+    this._updateDarkOverlay();
   },
 
   _bindEvents() {
-    const onCanvasClick = (event) => {
+    const onCanvasPointer = (event) => {
       const point = Utils.getCanvasPos(this.canvas, event);
       const hit = this._hitTestCandle(point);
       if (hit < 0) {
@@ -202,10 +206,10 @@ const CeremonyModule = {
       this._beginBlowPhase();
     };
 
-    this.canvas.addEventListener('click', onCanvasClick);
+    this.canvas.addEventListener('pointerdown', onCanvasPointer);
     this.actionBtn.onclick = onAction;
     this._cleanupFns.push(() => {
-      this.canvas.removeEventListener('click', onCanvasClick);
+      this.canvas.removeEventListener('pointerdown', onCanvasPointer);
       this.actionBtn.onclick = null;
     });
   },
@@ -213,16 +217,47 @@ const CeremonyModule = {
   _hitTestCandle(point) {
     for (let index = this._candles.length - 1; index >= 0; index -= 1) {
       const candle = this._candles[index];
-      const size = this._layout.frame.width * (candle.scale || 0.18);
-      if (Utils.distance(point.x, point.y, candle.absX, candle.absY) <= size * 0.45) {
+      const size = candle.img
+        ? Utils.getDecorationRenderSize(candle.img, this._layout.frame, candle.scale || 0.18)
+        : { width: this._layout.frame.width * 0.08, height: this._layout.frame.width * 0.16 };
+      if (Math.abs(point.x - candle.absX) <= size.width * 0.55 && Math.abs(point.y - candle.absY) <= size.height * 0.55) {
         return index;
       }
     }
     return -1;
   },
 
+  _updateDarkOverlay() {
+    if (!this.overlay) {
+      return;
+    }
+
+    if (!this._allLit || this._allBlown) {
+      this.overlay.style.background = 'rgba(0,0,0,0)';
+      return;
+    }
+
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const scaleX = canvasRect.width / this.canvas.width;
+    const scaleY = canvasRect.height / this.canvas.height;
+    const gradients = this._candles
+      .filter((candle) => candle.lit && !candle.blown)
+      .map((candle) => {
+        const size = candle.img
+          ? Utils.getDecorationRenderSize(candle.img, this._layout.frame, candle.scale || 0.18)
+          : { width: this._layout.frame.width * 0.08, height: this._layout.frame.width * 0.16 };
+        const glowX = canvasRect.left + candle.absX * scaleX;
+        const glowY = canvasRect.top + (candle.absY - size.height * 0.58) * scaleY;
+        const radius = Math.max(size.width * scaleX, size.height * scaleY) * 1.8;
+        return `radial-gradient(circle at ${glowX}px ${glowY}px, rgba(255,236,192,0.24) 0px, rgba(255,198,98,0.14) ${radius * 0.18}px, rgba(255,160,58,0.08) ${radius * 0.42}px, rgba(0,0,0,0) ${radius}px)`;
+      });
+
+    this.overlay.style.background = `${gradients.join(',')}, rgba(10, 8, 14, 0.82)`;
+  },
+
   _startDarkPhase() {
     this.overlay.classList.add('dark');
+    this._updateDarkOverlay();
     this.hintEl.textContent = '默念愿望后，点击按钮开始吹蜡烛';
     setTimeout(() => {
       this.wishText.classList.remove('hidden');
@@ -304,6 +339,7 @@ const CeremonyModule = {
 
     this.overlay.style.transition = 'background 0.9s ease';
     this.overlay.classList.remove('dark');
+    this.overlay.style.background = 'rgba(0,0,0,0)';
 
     setTimeout(() => {
       App.goTo('mod-cake-cut');

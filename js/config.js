@@ -2,6 +2,8 @@
  * 全局配置 - 素材路径、颜色、常量
  */
 const CONFIG = {
+  stateVersion: 2,
+
   // 寿星信息（修改此处即可自定义）
   birthday: {
     name: '寿星',
@@ -15,10 +17,10 @@ const CONFIG = {
   // 奶油颜色（色卡）—— 仅列出已有素材的 6 种
   creamColors: [
     { id: 'white', name: '奶白', hex: '#FFF8F0', css: 'rgba(255,248,240,0.95)', src: 'making/ingredients/food_coloring_bottles/white', singleCakeSrc: 'cake/bases/single/creamsingle/cream_01', doubleCakeSrc: 'cake/bases/double/cream/cream_01' },
-    { id: 'light_pink', name: '淡粉', hex: '#FFD6DC', css: 'rgba(255,214,220,0.9)', src: 'making/ingredients/food_coloring_bottles/light_pink', singleCakeSrc: 'cake/bases/single/creamsingle/cream_02', doubleCakeSrc: 'cake/bases/double/cream/cream_02' },
-    { id: 'peach_pink', name: '蜜桃粉', hex: '#FFB5A7', css: 'rgba(255,181,167,0.9)', src: 'making/ingredients/food_coloring_bottles/peach_pink', singleCakeSrc: 'cake/bases/single/creamsingle/cream_03', doubleCakeSrc: 'cake/bases/double/cream/cream_03' },
-    { id: 'light_taro', name: '淡芋紫', hex: '#D8B4E2', css: 'rgba(216,180,226,0.9)', src: 'making/ingredients/food_coloring_bottles/light_taro', singleCakeSrc: 'cake/bases/single/creamsingle/cream_04', doubleCakeSrc: 'cake/bases/double/cream/cream_04' },
-    { id: 'lavender', name: '薰衣草紫', hex: '#C3A6D8', css: 'rgba(195,166,216,0.9)', src: 'making/ingredients/food_coloring_bottles/lavender', singleCakeSrc: 'cake/bases/single/creamsingle/cream_05', doubleCakeSrc: 'cake/bases/double/cream/cream_05' },
+    { id: 'pink', legacyIds: ['light_pink'], name: '淡粉', hex: '#FFD6DC', css: 'rgba(255,214,220,0.9)', src: 'making/ingredients/food_coloring_bottles/pink', singleCakeSrc: 'cake/bases/single/creamsingle/cream_02', doubleCakeSrc: 'cake/bases/double/cream/cream_02' },
+    { id: 'red', legacyIds: ['peach_pink'], name: '蜜桃粉', hex: '#FFB5A7', css: 'rgba(255,181,167,0.9)', src: 'making/ingredients/food_coloring_bottles/red', singleCakeSrc: 'cake/bases/single/creamsingle/cream_03', doubleCakeSrc: 'cake/bases/double/cream/cream_03' },
+    { id: 'blue', legacyIds: ['light_taro'], name: '淡芋紫', hex: '#D8B4E2', css: 'rgba(216,180,226,0.9)', src: 'making/ingredients/food_coloring_bottles/blue', singleCakeSrc: 'cake/bases/single/creamsingle/cream_04', doubleCakeSrc: 'cake/bases/double/cream/cream_04' },
+    { id: 'purple', legacyIds: ['lavender'], name: '薰衣草紫', hex: '#C3A6D8', css: 'rgba(195,166,216,0.9)', src: 'making/ingredients/food_coloring_bottles/purple', singleCakeSrc: 'cake/bases/single/creamsingle/cream_05', doubleCakeSrc: 'cake/bases/double/cream/cream_05' },
     { id: 'mint_green', name: '薄荷绿', hex: '#A8E6CF', css: 'rgba(168,230,207,0.9)', src: 'making/ingredients/food_coloring_bottles/mint_green', singleCakeSrc: 'cake/bases/single/creamsingle/cream_06', doubleCakeSrc: 'cake/bases/double/cream/cream_06' },
   ],
 
@@ -104,6 +106,10 @@ const CONFIG = {
 
   // 打发奶油需要的圆周数
   whipRounds: 3,
+
+  // 抹面必须达到完整覆盖
+  coatCoverageTarget: 100,
+  coatCoverageCompleteThreshold: 99.5,
 
   // 相册最大存储数
   albumMaxItems: 20,

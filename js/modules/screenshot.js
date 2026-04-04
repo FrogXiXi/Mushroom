@@ -2,13 +2,11 @@
  * 模块6: 截图分享
  */
 const ScreenshotModule = {
-  _magicCardRevealed: false,
   _template: 'polaroid',
   _cakeLayers: [],
   _decorationImages: new Map(),
 
   async init() {
-    this._magicCardRevealed = !!App.state.magicCardRevealed;
     this._template = 'polaroid';
     await this._loadAssets();
     this._renderPreview();
@@ -146,62 +144,10 @@ const ScreenshotModule = {
       btn.onclick = () => {
         btns.forEach((item) => item.classList.remove('active'));
         btn.classList.add('active');
-        if (btn.dataset.tpl === 'magic_card') {
-          this._showMagicCard();
-          return;
-        }
         this._template = btn.dataset.tpl;
-        const cover = document.querySelector('#screenshot-preview .magic-cover');
-        if (cover) {
-          cover.remove();
-        }
         this._renderPreview();
       };
     });
-  },
-
-  _showMagicCard() {
-    const preview = document.getElementById('screenshot-preview');
-    if (preview.querySelector('.magic-cover')) {
-      return;
-    }
-
-    const cover = document.createElement('div');
-    cover.className = 'magic-cover';
-    cover.style.cssText = `
-      position: absolute; inset: 0; background: #8B5A2B;
-      display: flex; align-items: center; justify-content: center;
-      color: #FFF3D4; font-family: var(--font-body); font-size: 1.2rem;
-      cursor: pointer; border-radius: var(--radius-md);
-      transition: transform 600ms ease, opacity 600ms ease;
-      z-index: 10;
-    `;
-    cover.textContent = '↕ 滑动揭示祝福';
-    preview.style.position = 'relative';
-    preview.appendChild(cover);
-
-    let startY = 0;
-    const onTouchStart = (e) => {
-      startY = e.touches ? e.touches[0].clientY : e.clientY;
-    };
-    const onTouchEnd = (e) => {
-      const endY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-      if (Math.abs(endY - startY) > 30 || e.type === 'click') {
-        cover.style.transform = 'translateY(-100%)';
-        cover.style.opacity = '0';
-        setTimeout(() => {
-          cover.remove();
-          this._magicCardRevealed = true;
-          App.state.magicCardRevealed = true;
-          App.saveState();
-          Utils.showToast('已揭示祝福 🎉', 1500);
-        }, 600);
-      }
-    };
-
-    cover.addEventListener('touchstart', onTouchStart, { passive: true });
-    cover.addEventListener('touchend', onTouchEnd);
-    cover.addEventListener('click', onTouchEnd);
   },
 
   _setupActions() {
@@ -221,9 +167,11 @@ const ScreenshotModule = {
     const dataUrl = canvas.toDataURL('image/png');
     try {
       await AlbumModule.savePhoto(dataUrl, this._template);
-      App.state.albumReminderPending = true;
       App.saveState();
       Utils.showToast('已保存到相册 ✅', 1500);
+      setTimeout(() => {
+        App.goTo('mod-ceremony');
+      }, 300);
     } catch (error) {
       console.warn('save to album failed', error);
       // 降级：直接下载
@@ -232,6 +180,9 @@ const ScreenshotModule = {
       link.href = dataUrl;
       link.click();
       Utils.showToast('已保存到本地', 1500);
+      setTimeout(() => {
+        App.goTo('mod-ceremony');
+      }, 300);
     }
   },
 

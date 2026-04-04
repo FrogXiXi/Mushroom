@@ -4,6 +4,7 @@
 const App = {
   getDefaultState() {
     return {
+      stateVersion: CONFIG.stateVersion,
       cakeType: 'single',
       creamColor: CONFIG.creamColors[0],
       paintStrokes: [],
@@ -64,11 +65,13 @@ const App = {
     });
 
     // Always rehydrate creamColor from config so new mapping fields stay完整
-    const creamColor = CONFIG.creamColors.find((item) => item.id === state.creamColor?.id)
+    const storedCreamId = state.creamColor?.id;
+    const creamColor = CONFIG.creamColors.find((item) => item.id === storedCreamId || item.legacyIds?.includes(storedCreamId))
       || CONFIG.creamColors[0];
 
     return {
       ...state,
+      stateVersion: CONFIG.stateVersion,
       lastModule: normalizedLastModule,
       creamColor,
       paintStrokes: (state.paintStrokes || []).map((stroke) => ({
@@ -97,6 +100,10 @@ const App = {
         return;
       }
       const parsed = JSON.parse(raw);
+      if (parsed.stateVersion !== CONFIG.stateVersion) {
+        this.resetState();
+        return;
+      }
       this.state = {
         ...this.state,
         ...parsed,
@@ -163,6 +170,12 @@ const App = {
    */
   start() {
     this.loadState();
+    const albumBtn = document.getElementById('global-album-btn');
+    if (albumBtn) {
+      albumBtn.onclick = () => {
+        AlbumModule.open();
+      };
+    }
     // 初始化封面模块
     const coverMod = this.modules['mod-cover'];
     if (coverMod && coverMod.init) {
