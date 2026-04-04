@@ -308,7 +308,7 @@ const DecorateModule = {
 		if (source.clientX < rect.left || source.clientX > rect.right || source.clientY < rect.top || source.clientY > rect.bottom) {
 			return null;
 		}
-		return Utils.getCanvasPos(this.canvas, event);
+		return Utils.getCanvasPos(this.canvas, source);
 	},
 
 	async _addElementAt(item, point) {
