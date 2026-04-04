@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>春尽夏生 · Happy Birthday</title>
+  <title>其实是蘑菇林</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+KuaiLe&family=Cookie&display=swap" rel="stylesheet">
@@ -151,7 +151,7 @@
       <div class="paint-area">
         <canvas id="paint-canvas" width="800" height="800"></canvas>
       </div>
-      <p class="paint-hint">像画画模拟器一样调整颜色、透明度和笔刷，直接在整个蛋糕形状上作画。</p>
+      <p class="paint-hint">像拿蜡笔一样调整颜色、透明度和笔触，在整个蛋糕轮廓里慢慢涂开。</p>
       <div class="paint-tools">
         <div class="paint-color-picker" id="paint-color-picker"></div>
         <div class="brush-size-slider">
@@ -245,7 +245,13 @@
         <p class="ceremony-wish-text hidden" id="ceremony-wish-text">请许下你的心愿</p>
       </div>
       <p class="ceremony-hint" id="ceremony-hint">点击蜡烛点亮它</p>
-      <button class="btn-primary hidden ceremony-action-btn" id="ceremony-action-btn">开始吹蜡烛</button>
+      <div class="ceremony-actions">
+        <button class="btn-primary hidden ceremony-action-btn" id="ceremony-action-btn">开始吹蜡烛</button>
+        <div class="ceremony-extra-actions">
+          <button class="btn-secondary ceremony-extra-btn" id="ceremony-light-btn" type="button">灯光</button>
+          <button class="btn-secondary ceremony-extra-btn" id="ceremony-music-btn" type="button">音乐</button>
+        </div>
+      </div>
     </section>
 
     <!-- 模块8: 切蛋糕 -->

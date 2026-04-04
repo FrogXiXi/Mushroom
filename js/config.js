@@ -33,6 +33,7 @@ const CONFIG = {
     '#F4D06F',
     '#C97B63',
     '#8B5A2B',
+    '#1C1B1A',
     '#6B4EFF',
   ],
 

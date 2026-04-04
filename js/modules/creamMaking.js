@@ -172,13 +172,13 @@ const CreamMakingModule = {
     CONFIG.creamColors.forEach((color, index) => {
       const option = document.createElement('button');
       option.type = 'button';
+      option.setAttribute('aria-label', color.name);
       const activeId = App.state.creamColor?.id || CONFIG.creamColors[0].id;
       option.className = `bottle-option${activeId === color.id || (!activeId && index === 0) ? ' active' : ''}`;
       option.innerHTML = `
         <span class="bottle-option-thumb">
           <img src="${CONFIG.imgBase + color.src}.webp" alt="${color.name}" draggable="false">
         </span>
-        <span class="bottle-option-label">${color.name}</span>
       `;
 
       const image = option.querySelector('img');
