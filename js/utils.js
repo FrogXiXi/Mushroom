@@ -243,12 +243,31 @@ const Utils = {
     }
   },
 
-  createMaskCanvas(width, height, layout) {
+  createMaskCanvas(width, height, layout, options = {}) {
+    const {
+      decorations = [],
+      decorationImages = new Map(),
+    } = options;
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = width;
     maskCanvas.height = height;
     const maskCtx = maskCanvas.getContext('2d');
     Utils.drawCakeLayers(maskCtx, layout);
+
+    decorations.forEach((item) => {
+      const image = decorationImages.get(item.src);
+      if (!image) {
+        return;
+      }
+      const position = Utils.getDecorationPosition(item, layout.frame);
+      const size = Utils.getDecorationRenderSize(image, layout.frame, item.scale || 0.18);
+      maskCtx.save();
+      maskCtx.translate(position.x, position.y);
+      maskCtx.rotate(item.rotation || 0);
+      maskCtx.drawImage(image, -size.width / 2, -size.height / 2, size.width, size.height);
+      maskCtx.restore();
+    });
+
     return maskCanvas;
   },
 

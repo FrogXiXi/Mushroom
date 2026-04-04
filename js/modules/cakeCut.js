@@ -58,7 +58,10 @@ const CakeCutModule = {
 
     const sceneCtx = this._sceneCanvas.getContext('2d');
     const layout = Utils.getCakeLayout(this._sceneCanvas, this._cakeLayers);
-    this._fullMaskCanvas = Utils.createMaskCanvas(this._sceneCanvas.width, this._sceneCanvas.height, layout);
+    this._fullMaskCanvas = Utils.createMaskCanvas(this._sceneCanvas.width, this._sceneCanvas.height, layout, {
+      decorations: App.state.decorations || [],
+      decorationImages: this._decorationImages,
+    });
 
     Utils.drawCakeArtwork(sceneCtx, {
       layout,

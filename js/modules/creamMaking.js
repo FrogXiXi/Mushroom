@@ -492,7 +492,7 @@ const CreamMakingModule = {
       this.spatulaTool.classList.add('dragging');
       const previewPoint = this._getPreviewPoint(event);
       this._placeToolInPreview(this.spatulaTool, previewPoint.x - this.spatulaTool.offsetWidth / 2, previewPoint.y - this.spatulaTool.offsetHeight / 2);
-      this._lastSpatulaPoint = this._getApplyCanvasPoint(event);
+      this._lastSpatulaPoint = this._getSpatulaPaintPoint();
     };
 
     const move = (event) => {
@@ -503,7 +503,7 @@ const CreamMakingModule = {
       const previewPoint = this._getPreviewPoint(event);
       this._placeToolInPreview(this.spatulaTool, previewPoint.x - this.spatulaTool.offsetWidth / 2, previewPoint.y - this.spatulaTool.offsetHeight / 2);
 
-      const canvasPoint = this._getApplyCanvasPoint(event);
+      const canvasPoint = this._getSpatulaPaintPoint();
       if (!Utils.pointInMask(this._applyMaskCanvas, canvasPoint.x, canvasPoint.y)) {
         this._lastSpatulaPoint = canvasPoint;
         return;
@@ -815,6 +815,15 @@ const CreamMakingModule = {
     };
   },
 
+  _getSpatulaPaintPoint() {
+    const previewRect = this.applyPreview.getBoundingClientRect();
+    const spatulaRect = this.spatulaTool.getBoundingClientRect();
+    return {
+      x: Utils.clamp((spatulaRect.left - previewRect.left + spatulaRect.width * 0.18) * (this.applyCanvas.width / previewRect.width), 0, this.applyCanvas.width),
+      y: Utils.clamp((spatulaRect.top - previewRect.top + spatulaRect.height * 0.18) * (this.applyCanvas.height / previewRect.height), 0, this.applyCanvas.height),
+    };
+  },
+
   _placeTool(tool, left, top) {
     const maxLeft = this.area.clientWidth - tool.offsetWidth;
     const maxTop = this.area.clientHeight - tool.offsetHeight;
@@ -922,6 +931,13 @@ const CreamMakingModule = {
     if (this.step === 'ready') {
       return;
     }
+
+    this._coverageCtx.clearRect(0, 0, this._coverageCanvas.width, this._coverageCanvas.height);
+    this._coverageCtx.drawImage(this._applyMaskCanvas, 0, 0);
+    this.coverProgress = 100;
+    this._updateCoverProgress();
+    this._renderApplyPreview();
+
     this.step = 'ready';
     this._setHint('蛋糕已经裹上奶油，可以开始装饰和涂鸦了');
     this.nextBtn.classList.remove('hidden');
