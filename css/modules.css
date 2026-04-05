@@ -714,8 +714,6 @@
   position: absolute;
 }
 .ceremony-actions {
-  position: relative;
-  z-index: 24;
   display: flex;
   flex-direction: column;
   align-items: center;

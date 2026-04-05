@@ -876,7 +876,7 @@ const CreamMakingModule = {
     this.area.classList.toggle('hidden', coatStage);
     this.applyStage.classList.toggle('hidden', !coatStage);
     this.picker.classList.toggle('hidden', mode === 'coat' || mode === 'ready');
-    this.progressWrap.classList.toggle('hidden', mode !== 'whip' && mode !== 'whip-ready');
+    this.progressWrap.classList.toggle('hidden', mode !== 'whip');
     this._setBottlePickerEnabled(mode === 'color');
   },
 
@@ -1034,18 +1034,12 @@ const CreamMakingModule = {
   },
 
   _onWhipDone() {
-    this.step = 'whip-ready';
+    this.step = 'color';
     this._setMixerActive(false);
-    this._setStageLayout('whip-ready');
-    this._setHint('奶油已经打发好，点右下角进入滴入色素');
-    this._showNextButton('完成打发奶油，去滴入色素', () => {
-      this.step = 'color';
-      this._setStageLayout('color');
-      this._hideNextButton();
-      this._setHint(this._getBottleHintText());
-      Utils.showToast('可以开始滴入色素啦', 1400);
-    });
-    Utils.showToast('奶油已经打发好，准备进入滴色步骤 ✅', 1500);
+    this._setStageLayout('color');
+    this._hideNextButton();
+    this._setHint(this._getBottleHintText());
+    Utils.showToast('奶油打发好了，选个颜色给奶油上色吧', 1500);
   },
 
   _onColorDone() {
