@@ -51,7 +51,7 @@ const CeremonyModule = {
     this.wishText.classList.add('hidden');
     this.wishText.classList.remove('anim-breathe');
     this.actionBtn.classList.add('hidden');
-    this.actionBtn.textContent = '开始吹蜡烛';
+    this.actionBtn.textContent = '许完愿了，去吹蜡烛';
   },
 
   async _loadAssets() {
@@ -251,9 +251,15 @@ const CeremonyModule = {
     };
 
     const onAction = () => {
-      if (!this._allLit || this._allBlown) {
+      if (this._allBlown) {
+        App.goTo('mod-cake-cut');
         return;
       }
+
+      if (!this._allLit || this._blowPhaseStarted) {
+        return;
+      }
+
       this._beginBlowPhase();
     };
 
@@ -314,10 +320,11 @@ const CeremonyModule = {
   },
 
   _onAllCandlesLit() {
-    this.hintEl.textContent = '默念愿望后，点击按钮开始吹蜡烛';
+    this.hintEl.textContent = '默念愿望后，点右下角进入吹蜡烛';
     setTimeout(() => {
       this.wishText.classList.remove('hidden');
       this.wishText.classList.add('anim-breathe');
+      this.actionBtn.textContent = '许完愿了，去吹蜡烛';
       this.actionBtn.classList.remove('hidden');
     }, 700);
   },
@@ -473,14 +480,11 @@ const CeremonyModule = {
     this._allBlown = true;
     this._lightsOff = false;
     this.wishText.classList.add('hidden');
-    this.actionBtn.classList.add('hidden');
-    this.hintEl.textContent = '';
+    this.actionBtn.textContent = '完成吹蜡烛，去切蛋糕';
+    this.actionBtn.classList.remove('hidden');
+    this.hintEl.textContent = '蜡烛已经吹灭，点右下角切蛋糕';
     this._draw();
     this.overlay.style.background = 'rgba(0,0,0,0)';
-
-    setTimeout(() => {
-      App.goTo('mod-cake-cut');
-    }, 1100);
   },
 
   destroy() {

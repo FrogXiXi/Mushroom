@@ -8,20 +8,25 @@
 }
 .global-doodle {
   position: absolute;
-  opacity: 0.2;
+  opacity: 0.18;
   filter: saturate(0.95);
+  mix-blend-mode: multiply;
 }
 .global-doodle img {
   display: block;
   width: 100%;
   height: auto;
 }
-.global-doodle-1 { top: 6%; left: 4%; width: clamp(52px, 7vw, 90px); transform: rotate(-10deg); }
-.global-doodle-2 { top: 14%; right: 6%; width: clamp(48px, 6vw, 86px); transform: rotate(8deg); }
-.global-doodle-3 { bottom: 18%; left: 6%; width: clamp(56px, 8vw, 96px); transform: rotate(6deg); }
-.global-doodle-4 { bottom: 10%; right: 8%; width: clamp(54px, 8vw, 92px); transform: rotate(-8deg); }
-.global-doodle-5 { top: 42%; left: 2.5%; width: clamp(38px, 5vw, 68px); transform: rotate(12deg); }
-.global-doodle-6 { top: 56%; right: 4%; width: clamp(40px, 5vw, 70px); transform: rotate(-10deg); }
+.global-doodle-1 { top: 5%; left: 3%; width: clamp(42px, 9vw, 88px); transform: rotate(-10deg); }
+.global-doodle-2 { top: 12%; right: 4%; width: clamp(40px, 8vw, 82px); transform: rotate(8deg); }
+.global-doodle-3 { bottom: 16%; left: 4%; width: clamp(44px, 10vw, 94px); transform: rotate(6deg); }
+.global-doodle-4 { bottom: 8%; right: 6%; width: clamp(42px, 9vw, 90px); transform: rotate(-8deg); }
+.global-doodle-5 { top: 39%; left: 1.5%; width: clamp(32px, 7vw, 62px); transform: rotate(12deg); }
+.global-doodle-6 { top: 54%; right: 2%; width: clamp(34px, 7vw, 66px); transform: rotate(-10deg); }
+.global-doodle-7 { top: 22%; left: 10%; width: clamp(30px, 7vw, 64px); transform: rotate(-16deg); }
+.global-doodle-8 { top: 30%; right: 11%; width: clamp(32px, 7vw, 66px); transform: rotate(14deg); }
+.global-doodle-9 { bottom: 30%; right: 8%; width: clamp(34px, 7vw, 68px); transform: rotate(-14deg); }
+.global-doodle-10 { bottom: 24%; left: 12%; width: clamp(30px, 6vw, 60px); transform: rotate(10deg); }
 
 /* ===== 模块1: 封面 ===== */
 #mod-cover {
@@ -188,10 +193,10 @@
 }
 .mixer-tool {
   position: absolute;
-  top: 10%;
-  right: 3%;
-  width: clamp(25px, 6vw, 40px);
-  max-height: 40%;
+  top: 8%;
+  right: 2%;
+  width: clamp(52px, 14vw, 84px);
+  max-height: 46%;
   cursor: grab;
   z-index: 3;
   pointer-events: auto;
@@ -257,6 +262,16 @@
   max-width: min(94vw, 640px);
   scroll-snap-type: x mandatory;
   align-items: stretch;
+}
+.color-picker.is-disabled {
+  opacity: 0.62;
+}
+.color-picker.is-disabled .bottle-option {
+  filter: saturate(0.76);
+}
+.color-picker.is-disabled .bottle-option:hover,
+.color-picker.is-disabled .bottle-option.active {
+  transform: none;
 }
 .bottle-option {
   flex-shrink: 0;
@@ -359,7 +374,7 @@
   position: absolute;
   top: 8%;
   right: 4%;
-  width: clamp(62px, 15vw, 96px);
+  width: clamp(92px, 24vw, 138px);
   z-index: 3;
   cursor: grab;
   touch-action: none;
@@ -689,12 +704,14 @@
   text-align: center;
 }
 .ceremony-action-btn {
-  position: relative;
   z-index: 24;
   margin-top: 0;
   min-width: auto;
   width: auto;
   padding: 0 1.5rem;
+}
+.ceremony-action-btn.btn-next {
+  position: absolute;
 }
 .ceremony-actions {
   position: relative;
@@ -704,6 +721,48 @@
   align-items: center;
   gap: 0.5rem;
   margin-top: 1rem;
+}
+
+@media (max-width: 767px) {
+  .global-doodle {
+    opacity: 0.14;
+  }
+
+  .global-doodle-1 { left: 1.5%; }
+  .global-doodle-2 { right: 2%; }
+  .global-doodle-3 { left: 2%; bottom: 19%; }
+  .global-doodle-4 { right: 2%; bottom: 12%; }
+  .global-doodle-7 { top: 19%; left: 4%; }
+  .global-doodle-8 { top: 27%; right: 4%; }
+  .global-doodle-9 { bottom: 28%; right: 4%; }
+  .global-doodle-10 { bottom: 24%; left: 5%; }
+
+  .mixer-tool {
+    right: 0;
+    width: clamp(58px, 16vw, 90px);
+  }
+
+  .spatula-tool {
+    right: 1%;
+    width: clamp(100px, 28vw, 146px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .global-doodle {
+    opacity: 0.22;
+  }
+
+  .global-doodle-1 { width: clamp(58px, 6vw, 104px); }
+  .global-doodle-2 { width: clamp(52px, 5.6vw, 92px); }
+  .global-doodle-3 { width: clamp(60px, 6.5vw, 108px); }
+  .global-doodle-4 { width: clamp(58px, 6vw, 102px); }
+  .global-doodle-5 { width: clamp(42px, 4.8vw, 74px); }
+  .global-doodle-6 { width: clamp(44px, 4.8vw, 76px); }
+  .global-doodle-7 { width: clamp(40px, 4.6vw, 72px); }
+  .global-doodle-8 { width: clamp(40px, 4.6vw, 72px); }
+  .global-doodle-9 { width: clamp(42px, 4.8vw, 74px); }
+  .global-doodle-10 { width: clamp(38px, 4.4vw, 68px); }
 }
 
 /* ===== 模块8: 切蛋糕 ===== */

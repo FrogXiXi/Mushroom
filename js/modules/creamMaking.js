@@ -355,6 +355,21 @@ const CreamMakingModule = {
       : '奶油已经打发好，把一个色素瓶拖进碗里给奶油上色';
   },
 
+  _setBottlePickerEnabled(enabled) {
+    this.picker.classList.toggle('is-disabled', !enabled);
+  },
+
+  _showNextButton(text, onClick) {
+    this.nextBtn.textContent = text;
+    this.nextBtn.classList.remove('hidden');
+    this.nextBtn.onclick = onClick;
+  },
+
+  _hideNextButton() {
+    this.nextBtn.classList.add('hidden');
+    this.nextBtn.onclick = null;
+  },
+
   _createBottleGhost(color, event) {
     this._destroyBottleGhost();
     const ghost = document.createElement('div');
@@ -857,11 +872,12 @@ const CreamMakingModule = {
   },
 
   _setStageLayout(mode) {
-    const coatStage = mode === 'coat';
+    const coatStage = mode === 'coat' || mode === 'ready';
     this.area.classList.toggle('hidden', coatStage);
     this.applyStage.classList.toggle('hidden', !coatStage);
-    this.picker.classList.toggle('hidden', mode !== 'color');
-    this.progressWrap.classList.toggle('hidden', mode !== 'whip');
+    this.picker.classList.toggle('hidden', mode === 'coat' || mode === 'ready');
+    this.progressWrap.classList.toggle('hidden', mode !== 'whip' && mode !== 'whip-ready');
+    this._setBottlePickerEnabled(mode === 'color');
   },
 
   _getAreaPoint(event) {
@@ -1018,26 +1034,40 @@ const CreamMakingModule = {
   },
 
   _onWhipDone() {
-    this.step = 'color';
+    this.step = 'whip-ready';
     this._setMixerActive(false);
-    this._setStageLayout('color');
-    this._setHint(this._getBottleHintText());
-    Utils.showToast('奶油已经打发好，选个颜色继续调味吧 ✅', 1500);
+    this._setStageLayout('whip-ready');
+    this._setHint('奶油已经打发好，点右下角进入滴入色素');
+    this._showNextButton('完成打发奶油，去滴入色素', () => {
+      this.step = 'color';
+      this._setStageLayout('color');
+      this._hideNextButton();
+      this._setHint(this._getBottleHintText());
+      Utils.showToast('可以开始滴入色素啦', 1400);
+    });
+    Utils.showToast('奶油已经打发好，准备进入滴色步骤 ✅', 1500);
   },
 
   _onColorDone() {
-    this.step = 'coat';
-    this._setHint('奶油上色完成，拖动抹刀把奶油盖到蛋糕胚上');
-    this._setStageLayout('coat');
-    this.spatulaTool.classList.remove('hidden');
-    this._resizeApplyCanvas();
-    this._setupApplyPreview();
-    this._renderApplyPreview();
-    this._updateCoverProgress();
-    this._rememberSpatulaHome();
-    this._resetTool(this.spatulaTool);
-    App.saveState();
-    Utils.showToast('奶油上色完成，来给蛋糕抹面吧 ✅', 1500);
+    this.step = 'color-ready';
+    this._setStageLayout('color-ready');
+    this._setHint('色素已经滴好了，点右下角开始抹面');
+    this._showNextButton('完成滴入色素，去抹面', () => {
+      this.step = 'coat';
+      this._setHint('奶油上色完成，拖动抹刀把奶油盖到蛋糕胚上');
+      this._setStageLayout('coat');
+      this._hideNextButton();
+      this.spatulaTool.classList.remove('hidden');
+      this._resizeApplyCanvas();
+      this._setupApplyPreview();
+      this._renderApplyPreview();
+      this._updateCoverProgress();
+      this._rememberSpatulaHome();
+      this._resetTool(this.spatulaTool);
+      App.saveState();
+      Utils.showToast('开始给蛋糕抹面吧 ✅', 1500);
+    });
+    Utils.showToast('色素已经滴好了，下一步可以去抹面', 1500);
   },
 
   _onCoatDone() {
@@ -1053,10 +1083,10 @@ const CreamMakingModule = {
 
     this.step = 'ready';
     this._setHint('蛋糕已经裹上奶油，可以开始装饰和涂鸦了');
-    this.nextBtn.classList.remove('hidden');
-    this.nextBtn.onclick = () => {
+    this._setStageLayout('ready');
+    this._showNextButton('完成抹面，开始装饰', () => {
       App.goTo('mod-decorate');
-    };
+    });
     App.saveState();
     Utils.showToast('抹面完成，可以开始装饰啦 🎂', 1500);
   },
@@ -1066,6 +1096,7 @@ const CreamMakingModule = {
       cancelAnimationFrame(this._animationFrame);
       this._animationFrame = null;
     }
+    this._hideNextButton();
     this._destroyBottleGhost();
     this._cleanupFns.forEach((cleanup) => cleanup());
     this._cleanupFns = [];
