@@ -31,7 +31,11 @@
 .cover-bg {
   position: absolute;
   inset: 0;
-  background: #f3c200;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 38%, rgba(255,235,160,0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 70% at 25% 75%, rgba(255,200,100,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 60% at 80% 65%, rgba(255,210,120,0.18) 0%, transparent 50%),
+    linear-gradient(170deg, #f5cc30 0%, #f3c200 40%, #e8a820 100%);
   z-index: 0;
 }
 .cover-content {
@@ -64,6 +68,9 @@
 }
 .cover-btn {
   opacity: 0;
+}
+.cover-btn.visible {
+  animation: softPulse 2.8s ease-in-out infinite 1.2s;
 }
 .cover-doodles {
   position: absolute;
@@ -649,13 +656,13 @@
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0);
-  transition: background 700ms ease, opacity 700ms ease;
+  transition: background 1200ms cubic-bezier(0.4, 0, 0.2, 1), opacity 800ms ease;
   pointer-events: none;
   z-index: 22;
   will-change: background;
 }
 .ceremony-overlay.dark {
-  background: rgba(12, 8, 20, 0.62);
+  background: rgba(8, 5, 15, 0.72);
 }
 .ceremony-wish-text {
   position: absolute;
@@ -676,8 +683,8 @@
   position: relative;
   z-index: 24;
   font-size: 0.9rem;
-  color: rgba(255, 248, 238, 0.92);
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  color: rgba(255, 248, 238, 0.95);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45), 0 0 4px rgba(0, 0, 0, 0.2);
   margin-top: 1rem;
   text-align: center;
 }
@@ -757,7 +764,19 @@
 
 /* ===== 模块9: 收尾 ===== */
 #mod-ending {
-  background: linear-gradient(165deg, var(--bg-warm) 0%, #FFF0C1 100%);
+  background: linear-gradient(165deg, #FFF8E1 0%, #FFEDB3 50%, #FFD97A 100%);
+  overflow: hidden;
+}
+#mod-ending::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,220,140,0.35) 0%, transparent 50%),
+    radial-gradient(circle at 72% 65%, rgba(255,195,120,0.25) 0%, transparent 45%),
+    radial-gradient(circle at 50% 80%, rgba(255,200,100,0.15) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
 }
 .ending-content {
   text-align: center;
@@ -765,16 +784,18 @@
   flex-direction: column;
   align-items: center;
   gap: 2.5rem;
+  position: relative;
+  z-index: 1;
 }
 .ending-text {
   font-family: var(--font-body);
   font-size: clamp(1.2rem, 4vw, 2rem);
   color: var(--text-brown);
-  line-height: 2;
+  line-height: 2.4;
   max-width: 80vw;
   opacity: 0;
-  text-shadow: 0 1px 3px rgba(139,90,43,0.06);
-  letter-spacing: 0.06em;
+  text-shadow: 0 2px 10px rgba(139,90,43,0.12);
+  letter-spacing: 0.08em;
 }
 
 /* ===== 相册面板 ===== */
@@ -791,7 +812,7 @@
 }
 .album-overlay.hidden { display: none; }
 .album-modal {
-  background: var(--bg-cream);
+  background: linear-gradient(145deg, rgba(255,253,245,0.97), rgba(255,248,235,0.97));
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   width: 92vw;
@@ -801,8 +822,11 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 6px 20px rgba(0,0,0,0.08);
-  border: 1px solid rgba(255,255,255,0.5);
+  box-shadow:
+    0 24px 64px rgba(139,90,43,0.14),
+    0 8px 24px rgba(139,90,43,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.85);
+  border: 2.5px dashed rgba(139,90,43,0.16);
 }
 .album-header {
   display: flex;

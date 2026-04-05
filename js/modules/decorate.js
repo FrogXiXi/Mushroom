@@ -420,6 +420,17 @@ const DecorateModule = {
 				return;
 			}
 
+			// 双指变单指：从缩放平滑过渡到拖拽
+			if (this._pinch && event.touches && event.touches.length === 1 && this._selectedIdx >= 0) {
+				this._pinch = null;
+				const pt = Utils.getCanvasPos(this.canvas, event);
+				const element = this.elements[this._selectedIdx];
+				const position = this._getElementPosition(element);
+				this._draggingElement = true;
+				this._dragOffset = { x: pt.x - position.x, y: pt.y - position.y };
+				return;
+			}
+
 			const point = Utils.getCanvasPos(this.canvas, event);
 
 			if (this._draggingElement && this._selectedIdx >= 0) {
@@ -444,8 +455,14 @@ const DecorateModule = {
 			this._render();
 		};
 
-		const end = () => {
+		const end = (event) => {
 			clearTimeout(this._longPressTimer);
+
+			// 双指变单指时不要结束状态，让 move 处理过渡
+			const remainingTouches = event.touches ? event.touches.length : 0;
+			if (this._pinch && remainingTouches > 0) {
+				return;
+			}
 			this._pinch = null;
 
 			if (this._drawing && this._currentStroke && this._currentStroke.points.length > 1) {
@@ -532,7 +549,13 @@ const DecorateModule = {
 			const element = this.elements[index];
 			const position = this._getElementPosition(element);
 			const size = this._getElementRenderSize(element);
-			if (Math.abs(point.x - position.x) <= size.width * 0.56 && Math.abs(point.y - position.y) <= size.height * 0.56) {
+			const dx = point.x - position.x;
+			const dy = point.y - position.y;
+			// 将点转换到元素本地坐标系以正确处理旋转
+			const angle = -(element.rotation || 0);
+			const localX = dx * Math.cos(angle) - dy * Math.sin(angle);
+			const localY = dx * Math.sin(angle) + dy * Math.cos(angle);
+			if (Math.abs(localX) <= size.width * 0.56 && Math.abs(localY) <= size.height * 0.56) {
 				return index;
 			}
 		}

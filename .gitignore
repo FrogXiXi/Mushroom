@@ -7,3 +7,5 @@ Thumbs.db
 
 # 忽略手动下载到仓库但不希望推送到远程的外部 skills
 /.github/skills/frontend-design/
+/.github/skills/find-skills/
+/.github/skills/skill-creator/

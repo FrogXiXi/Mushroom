@@ -1,0 +1,23 @@
+{
+  "skill_name": "dev-process",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "继续修复这个仓库里的手机端交互问题，先按现有流程接手上下文。",
+      "expected_output": "先读取开发过程.md，概括相关最近变更与共通注意事项，再进入修复工作。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我要给这个项目新增一条长期协作规则，后续每次都要遵守。",
+      "expected_output": "先读取开发过程.md，更新共通注意事项，并同步检查相关 instructions 或 skill。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "帮我整理这批素材并更新页面，但别破坏 GitHub Pages 发布。",
+      "expected_output": "先识别 GitHub Pages 约束，说明是否涉及批量文件或图片处理，并采用分批处理策略。",
+      "files": []
+    }
+  ]
+}
