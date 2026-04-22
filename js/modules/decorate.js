@@ -134,7 +134,7 @@ const DecorateModule = {
 
 	_updateTip() {
 		const tips = {
-			cream: '像拿裱花袋一样在蛋糕上挤出奶油花纹，选好颜色和花嘴大小开始吧！',
+			cream: '选好奶油颜色和花嘴大小，在蛋糕上像拿裱花袋一样挤出花纹吧！',
 			paint: '选好颜色和笔刷大小，在蛋糕上画出你喜欢的卡通图案吧！',
 		};
 		if (tips[this.activeTab]) {
@@ -152,10 +152,16 @@ const DecorateModule = {
 			const chip = document.createElement('button');
 			chip.type = 'button';
 			chip.className = `cream-stamp-chip${this._selectedStampSrc === stamp.src ? ' active' : ''}`;
-			chip.innerHTML = `<img src="${CONFIG.imgBase + stamp.src}.webp" alt="${stamp.name}" draggable="false">`;
-			chip.querySelector('img').onerror = function onStampError() {
+			chip.setAttribute('aria-label', stamp.name);
+			const img = document.createElement('img');
+			img.alt = stamp.name;
+			img.draggable = false;
+			img.loading = 'eager';
+			img.src = `${CONFIG.imgBase + stamp.src}.webp`;
+			img.onerror = function onStampError() {
 				this.src = `${CONFIG.imgBase + stamp.src}.png`;
 			};
+			chip.appendChild(img);
 			chip.onclick = () => {
 				this._selectedStampSrc = stamp.src;
 				picker.querySelectorAll('.cream-stamp-chip').forEach((item) => item.classList.remove('active'));
@@ -170,6 +176,7 @@ const DecorateModule = {
 		const picker = document.getElementById('decorate-paint-color-picker');
 		const sizeInput = document.getElementById('decorate-brush-size');
 		const opacityInput = document.getElementById('decorate-paint-opacity');
+		const brightnessInput = document.getElementById('decorate-paint-brightness');
 		const settings = App.state.editorSettings;
 
 		picker.innerHTML = '';
@@ -202,6 +209,7 @@ const DecorateModule = {
 
 		sizeInput.value = settings.size;
 		opacityInput.value = Math.round(settings.opacity * 100);
+		brightnessInput.value = settings.brightness || 72;
 	},
 
 	_bindUiEvents() {
@@ -217,6 +225,10 @@ const DecorateModule = {
 		};
 		document.getElementById('decorate-paint-opacity').oninput = (event) => {
 			App.state.editorSettings.opacity = parseInt(event.target.value, 10) / 100;
+			App.saveState();
+		};
+		document.getElementById('decorate-paint-brightness').oninput = (event) => {
+			App.state.editorSettings.brightness = parseInt(event.target.value, 10);
 			App.saveState();
 		};
 		document.getElementById('decorate-cream-size').oninput = (event) => {
@@ -498,6 +510,7 @@ const DecorateModule = {
 					color: App.state.editorSettings.color,
 					opacity: App.state.editorSettings.opacity,
 					width: parseInt(document.getElementById('decorate-brush-size').value, 10) * 1.2,
+					brightness: parseInt(document.getElementById('decorate-paint-brightness').value, 10) || 72,
 					seed: Date.now() % 100000,
 				};
 			}
@@ -704,8 +717,11 @@ const DecorateModule = {
 				if (!stroke.points || stroke.points.length < 2) {
 					return;
 				}
+				const adjustedColor = stroke.brightness && stroke.brightness !== 72
+					? Utils.adjustBrightness(stroke.color, stroke.brightness)
+					: stroke.color;
 				Utils.drawCrayonStroke(layerCtx, this._getStrokeAbsolutePoints(stroke), {
-					color: stroke.color,
+					color: adjustedColor,
 					opacity: stroke.opacity,
 					width: stroke.width,
 					seed: stroke.seed,

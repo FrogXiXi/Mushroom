@@ -17,6 +17,7 @@ const App = {
         opacity: 0.9,
         size: 12,
         creamSize: 24,
+        brightness: 72,
       },
       lastModule: 'mod-cover',
     };

@@ -686,6 +686,19 @@ const Utils = {
     return `#${f(0)}${f(8)}${f(4)}`;
   },
 
+  adjustBrightness(hex, brightness) {
+    const safe = hex.replace('#', '');
+    const r = parseInt(safe.substring(0, 2), 16);
+    const g = parseInt(safe.substring(2, 4), 16);
+    const b = parseInt(safe.substring(4, 6), 16);
+    const factor = brightness / 72;
+    const adjust = (c) => Math.min(255, Math.max(0, Math.round(c * factor)));
+    const rr = adjust(r).toString(16).padStart(2, '0');
+    const gg = adjust(g).toString(16).padStart(2, '0');
+    const bb = adjust(b).toString(16).padStart(2, '0');
+    return `#${rr}${gg}${bb}`;
+  },
+
   drawColorSlider(canvas, thumbEl, currentColor, onChange) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
@@ -694,7 +707,7 @@ const Utils = {
     const steps = 12;
     for (let i = 0; i <= steps; i += 1) {
       const hue = (i / steps) * 360;
-      gradient.addColorStop(i / steps, `hsl(${hue}, 85%, 60%)`);
+      gradient.addColorStop(i / steps, `hsl(${hue}, 65%, 72%)`);
     }
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = gradient;
@@ -729,7 +742,7 @@ const Utils = {
     const updateThumb = (hue) => {
       const x = (hue / 360) * w;
       thumbEl.style.left = `${x}px`;
-      thumbEl.style.background = `hsl(${hue}, 85%, 60%)`;
+      thumbEl.style.background = `hsl(${hue}, 65%, 72%)`;
     };
 
     const initialHue = findHueFromHex(currentColor);
@@ -742,7 +755,7 @@ const Utils = {
       const x = Utils.clamp(clientX - rect.left, 0, rect.width);
       const hue = (x / rect.width) * 360;
       updateThumb(hue);
-      const hex = Utils.hslToHex(hue, 85, 60);
+      const hex = Utils.hslToHex(hue, 65, 72);
       onChange(hex);
     };
 

@@ -6,12 +6,15 @@ const CoverModule = {
     const title = document.getElementById('cover-title');
     const subtitle = document.getElementById('cover-subtitle');
     const btn = document.getElementById('cover-enter-btn');
+    const versionEl = document.getElementById('cover-version');
 
-    // 设置副标题文案
     const { name, date, theme } = CONFIG.birthday;
     subtitle.textContent = `To ${name} · Happy Birthday · ${date}`;
 
-    // 设置涂鸦装饰
+    if (versionEl) {
+      versionEl.textContent = `v${CONFIG.stateVersion}`;
+    }
+
     this._setupDoodles();
 
     // 分层淡入动画序列

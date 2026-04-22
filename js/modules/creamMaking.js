@@ -876,7 +876,7 @@ const CreamMakingModule = {
     this.area.classList.toggle('hidden', coatStage);
     this.applyStage.classList.toggle('hidden', !coatStage);
     this.picker.classList.toggle('hidden', mode === 'coat' || mode === 'ready');
-    this.progressWrap.classList.toggle('hidden', mode !== 'whip');
+    this.progressWrap.classList.toggle('cream-progress--hidden', mode !== 'whip');
     this._setBottlePickerEnabled(mode === 'color');
   },
 

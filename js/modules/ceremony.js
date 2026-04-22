@@ -497,8 +497,39 @@ const CeremonyModule = {
     this.actionBtn.textContent = '完成吹蜡烛，去切蛋糕';
     this.actionBtn.classList.remove('hidden');
     this.hintEl.textContent = '蜡烛已经吹灭，点右下角切蛋糕';
+    this._playBlowOutSound();
     this._draw();
     this.overlay.style.background = 'rgba(0,0,0,0)';
+  },
+
+  _playBlowOutSound() {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      const audioCtx = new AudioContextClass();
+      const duration = 0.6;
+      const sampleRate = audioCtx.sampleRate;
+      const buffer = audioCtx.createBuffer(1, sampleRate * duration, sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i += 1) {
+        const t = i / sampleRate;
+        const envelope = Math.exp(-t * 6);
+        data[i] = (Math.random() * 2 - 1) * envelope * 0.3;
+      }
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 800;
+      source.connect(filter);
+      filter.connect(audioCtx.destination);
+      source.start();
+      source.onended = () => {
+        audioCtx.close();
+      };
+    } catch (error) {
+      console.warn('blow out sound failed', error);
+    }
   },
 
   destroy() {
