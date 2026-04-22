@@ -1,6 +1,6 @@
 /**
- * 模块4: 抹奶油 & 裱花
- * 使用真实蛋糕透明区域作为可绘制蒙版，支持颜色、透明度和奶油裱花质感
+ * 模块4: 抹奶油 & 画画
+ * 使用真实蛋糕透明区域作为可绘制蒙版，支持蜡笔笔触和颜色选择
  */
 const CreamPaintModule = {
 	strokes: [],
@@ -11,6 +11,7 @@ const CreamPaintModule = {
 	_maskCanvas: null,
 	_decorationImages: new Map(),
 	_cleanupFns: [],
+	_colorSliderCtrl: null,
 
 	async init() {
 		this.canvas = document.getElementById('paint-canvas');
@@ -71,10 +72,23 @@ const CreamPaintModule = {
 				App.state.editorSettings.color = color;
 				picker.querySelectorAll('.paint-color-chip').forEach((item) => item.classList.remove('active'));
 				chip.classList.add('active');
+				if (this._colorSliderCtrl) {
+					this._colorSliderCtrl.setColor(color);
+				}
 				App.saveState();
 			});
 			picker.appendChild(chip);
 		});
+
+		const sliderCanvas = document.getElementById('paint-color-slider-canvas');
+		const sliderThumb = document.getElementById('paint-color-slider-thumb');
+		if (sliderCanvas && sliderThumb) {
+			this._colorSliderCtrl = Utils.drawColorSlider(sliderCanvas, sliderThumb, settings.color, (hex) => {
+				App.state.editorSettings.color = hex;
+				picker.querySelectorAll('.paint-color-chip').forEach((item) => item.classList.remove('active'));
+				App.saveState();
+			});
+		}
 
 		sizeInput.value = settings.size;
 		opacityInput.value = Math.round(settings.opacity * 100);
@@ -120,10 +134,11 @@ const CreamPaintModule = {
 			}
 			this._drawing = true;
 			this._currentStroke = {
+				type: 'crayon',
 				points: [this._normalizePoint(point)],
 				color: App.state.editorSettings.color,
 				opacity: App.state.editorSettings.opacity,
-				width: parseInt(document.getElementById('brush-size').value, 10) * 1.6,
+				width: parseInt(document.getElementById('brush-size').value, 10) * 1.2,
 				seed: Date.now() % 100000,
 			};
 			this._render();
@@ -204,7 +219,7 @@ const CreamPaintModule = {
 				if (!stroke.points || stroke.points.length < 2) {
 					return;
 				}
-				Utils.drawCreamStroke(layerCtx, this._getAbsolutePoints(stroke), {
+				Utils.drawCrayonStroke(layerCtx, this._getAbsolutePoints(stroke), {
 					color: stroke.color,
 					opacity: stroke.opacity,
 					width: stroke.width,

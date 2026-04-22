@@ -10,6 +10,7 @@ const CakeCutModule = {
   _fullMaskCanvas: null,
   _cakeLayers: [],
   _decorationImages: new Map(),
+  _creamStampImages: new Map(),
   _dragIdx: -1,
   _dragStart: null,
   _origOffset: null,
@@ -43,6 +44,15 @@ const CakeCutModule = {
   async _loadAssets() {
     this._cakeLayers = await Utils.loadCakeLayers(App.state.cakeType || 'single');
     this._decorationImages = await Utils.loadDecorationImagesForState(App.state.decorations || []);
+    this._creamStampImages = new Map();
+    await Promise.all(CONFIG.creamStampColors.map(async (stamp) => {
+      try {
+        const image = await Utils.loadImage(stamp.src);
+        this._creamStampImages.set(stamp.src, image);
+      } catch (error) {
+        console.warn('cream stamp load failed', stamp.src, error);
+      }
+    }));
   },
 
   _resizeCanvas(canvas) {
@@ -68,6 +78,8 @@ const CakeCutModule = {
       maskCanvas: this._fullMaskCanvas,
       creamColor: App.state.creamColor || CONFIG.creamColors[0],
       strokes: App.state.paintStrokes || [],
+      creamStrokes: App.state.creamStrokes || [],
+      creamStampImages: this._creamStampImages,
       decorations: App.state.decorations || [],
       decorationImages: this._decorationImages,
     });

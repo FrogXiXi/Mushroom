@@ -8,13 +8,15 @@ const App = {
       cakeType: 'single',
       creamColor: CONFIG.creamColors[0],
       paintStrokes: [],
+      creamStrokes: [],
       decorations: [],
       magicCardRevealed: false,
       albumReminderPending: false,
       editorSettings: {
         color: CONFIG.editorColors[1],
-        opacity: 0.8,
-        size: 20,
+        opacity: 0.9,
+        size: 12,
+        creamSize: 24,
       },
       lastModule: 'mod-cover',
     };
@@ -78,6 +80,10 @@ const App = {
         ...stroke,
         points: (stroke.points || []).map((point) => Utils.normalizeStoredPoint(point)),
       })),
+      creamStrokes: (state.creamStrokes || []).map((stroke) => ({
+        ...stroke,
+        points: (stroke.points || []).map((point) => Utils.normalizeStoredPoint(point)),
+      })),
       decorations: (state.decorations || []).map((item) => {
         if (typeof item.nx === 'number' && typeof item.ny === 'number') {
           return item;
@@ -130,6 +136,7 @@ const App = {
       || serialized.cakeType !== defaults.cakeType
       || serialized.creamColor?.id !== defaults.creamColor.id
       || (serialized.paintStrokes || []).length > 0
+      || (serialized.creamStrokes || []).length > 0
       || (serialized.decorations || []).length > 0
       || serialized.magicCardRevealed !== defaults.magicCardRevealed
       || serialized.albumReminderPending !== defaults.albumReminderPending;

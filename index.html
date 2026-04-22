@@ -136,7 +136,7 @@
       <div class="color-picker" id="color-picker">
         <!-- 色素瓶由 JS 动态生成 -->
       </div>
-      <div class="cream-progress" id="cream-progress">
+      <div class="cream-progress cream-progress--hidden" id="cream-progress">
         <div class="cream-progress-bar">
           <div class="cream-progress-fill"></div>
         </div>
@@ -162,24 +162,28 @@
       <button class="btn-primary btn-next hidden" id="cream-making-next">完成抹面，开始装饰</button>
     </section>
 
-    <!-- 模块4: 抹奶油 & 涂鸦 -->
+    <!-- 模块4: 抹奶油 & 画画 -->
     <section id="mod-cream-paint" class="module">
       <div class="module-header">
-        <h2 class="module-title">抹奶油 & 裱花</h2>
+        <h2 class="module-title">抹奶油 & 画画</h2>
       </div>
       <div class="paint-area">
         <canvas id="paint-canvas" width="800" height="800"></canvas>
       </div>
-      <p class="paint-hint">像拿裱花袋一样调整颜色、透明度和花嘴大小，在蛋糕表面慢慢挤出奶油纹路。</p>
+      <p class="paint-hint">选好颜色和笔刷大小，在蛋糕上画出你喜欢的卡通图案吧！</p>
       <div class="paint-tools">
         <div class="paint-color-picker" id="paint-color-picker"></div>
+        <div class="color-slider-picker" id="paint-color-slider">
+          <canvas class="color-slider-canvas" id="paint-color-slider-canvas" width="240" height="24"></canvas>
+          <div class="color-slider-thumb" id="paint-color-slider-thumb"></div>
+        </div>
         <div class="brush-size-slider">
           <label>笔刷大小</label>
-          <input type="range" id="brush-size" min="10" max="50" value="20">
+          <input type="range" id="brush-size" min="4" max="40" value="12">
         </div>
         <div class="opacity-slider">
           <label>透明度</label>
-          <input type="range" id="paint-opacity" min="10" max="100" value="80">
+          <input type="range" id="paint-opacity" min="10" max="100" value="90">
         </div>
         <button class="btn-tool" id="paint-undo">撤销</button>
         <button class="btn-tool" id="paint-clear">清空</button>
@@ -190,26 +194,40 @@
     <!-- 模块5: 蛋糕装饰 -->
     <section id="mod-decorate" class="module">
       <div class="module-header">
-        <h2 class="module-title">装饰蛋糕 & 裱花</h2>
+        <h2 class="module-title">装饰蛋糕</h2>
       </div>
       <div class="decorate-area">
         <canvas id="decorate-canvas" width="800" height="800"></canvas>
       </div>
       <div class="decorate-tabs" id="decorate-tabs">
-        <button class="tab-btn" data-tab="paint">裱花</button>
+        <button class="tab-btn" data-tab="cream">裱花</button>
+        <button class="tab-btn" data-tab="paint">画画</button>
         <button class="tab-btn active" data-tab="candles">蜡烛</button>
         <button class="tab-btn" data-tab="fruits">食材</button>
         <button class="tab-btn" data-tab="toppers">插件</button>
       </div>
+      <div class="decorate-cream-tools hidden" id="decorate-cream-tools">
+        <div class="cream-stamp-picker" id="decorate-cream-stamp-picker"></div>
+        <div class="brush-size-slider">
+          <label>花嘴大小</label>
+          <input type="range" id="decorate-cream-size" min="10" max="50" value="24">
+        </div>
+        <button class="btn-tool" id="decorate-cream-undo">撤销</button>
+        <button class="btn-tool" id="decorate-cream-clear">清空</button>
+      </div>
       <div class="decorate-paint-tools hidden" id="decorate-paint-tools">
         <div class="paint-color-picker" id="decorate-paint-color-picker"></div>
+        <div class="color-slider-picker" id="decorate-paint-color-slider">
+          <canvas class="color-slider-canvas" id="decorate-paint-slider-canvas" width="240" height="24"></canvas>
+          <div class="color-slider-thumb" id="decorate-paint-slider-thumb"></div>
+        </div>
         <div class="brush-size-slider">
           <label>笔刷大小</label>
-          <input type="range" id="decorate-brush-size" min="10" max="50" value="20">
+          <input type="range" id="decorate-brush-size" min="4" max="40" value="12">
         </div>
         <div class="opacity-slider">
           <label>透明度</label>
-          <input type="range" id="decorate-paint-opacity" min="10" max="100" value="80">
+          <input type="range" id="decorate-paint-opacity" min="10" max="100" value="90">
         </div>
         <button class="btn-tool" id="decorate-undo">撤销</button>
         <button class="btn-tool" id="decorate-clear">清空</button>

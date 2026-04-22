@@ -7,6 +7,7 @@ const CeremonyModule = {
   _allBlown: false,
   _cakeLayers: [],
   _decorationImages: new Map(),
+  _creamStampImages: new Map(),
   _layout: null,
   _maskCanvas: null,
   _flameImg: null,
@@ -50,6 +51,7 @@ const CeremonyModule = {
     this.overlay.style.background = 'rgba(0,0,0,0)';
     this.wishText.classList.add('hidden');
     this.wishText.classList.remove('anim-breathe');
+    this.hintEl.classList.remove('ceremony-hint--center');
     this.actionBtn.classList.add('hidden');
     this.actionBtn.textContent = '许完愿了，去吹蜡烛';
   },
@@ -57,8 +59,16 @@ const CeremonyModule = {
   async _loadAssets() {
     this._cakeLayers = await Utils.loadCakeLayers(App.state.cakeType || 'single');
     this._decorationImages = await Utils.loadDecorationImagesForState(App.state.decorations || []);
+    this._creamStampImages = new Map();
+    await Promise.all(CONFIG.creamStampColors.map(async (stamp) => {
+      try {
+        const image = await Utils.loadImage(stamp.src);
+        this._creamStampImages.set(stamp.src, image);
+      } catch (error) {
+        console.warn('cream stamp load failed', stamp.src, error);
+      }
+    }));
 
-    // 只加载单张火焰图片
     try {
       this._flameImg = await Utils.loadImage(CONFIG.flameSrc);
     } catch (error) {
@@ -121,6 +131,8 @@ const CeremonyModule = {
       maskCanvas: this._maskCanvas,
       creamColor: App.state.creamColor || CONFIG.creamColors[0],
       strokes: App.state.paintStrokes || [],
+      creamStrokes: App.state.creamStrokes || [],
+      creamStampImages: this._creamStampImages,
       decorations,
       decorationImages: this._decorationImages,
     });
@@ -320,7 +332,8 @@ const CeremonyModule = {
   },
 
   _onAllCandlesLit() {
-    this.hintEl.textContent = '默念愿望后，点右下角进入吹蜡烛';
+    this.hintEl.textContent = '闭上眼，默默许下你的心愿吧';
+    this.hintEl.classList.add('ceremony-hint--center');
     setTimeout(() => {
       this.wishText.classList.remove('hidden');
       this.wishText.classList.add('anim-breathe');
@@ -333,6 +346,7 @@ const CeremonyModule = {
     this._blowPhaseStarted = true;
     this.wishText.classList.add('hidden');
     this.actionBtn.classList.add('hidden');
+    this.hintEl.classList.remove('ceremony-hint--center');
     this.hintEl.textContent = '对着屏幕吹气，或直接点蜡烛火苗';
     this._requestMic();
   },

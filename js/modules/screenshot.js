@@ -5,6 +5,7 @@ const ScreenshotModule = {
   _template: 'polaroid',
   _cakeLayers: [],
   _decorationImages: new Map(),
+  _creamStampImages: new Map(),
 
   async init() {
     this._template = 'polaroid';
@@ -17,6 +18,15 @@ const ScreenshotModule = {
   async _loadAssets() {
     this._cakeLayers = await Utils.loadCakeLayers(App.state.cakeType || 'single');
     this._decorationImages = await Utils.loadDecorationImagesForState(App.state.decorations || []);
+    this._creamStampImages = new Map();
+    await Promise.all(CONFIG.creamStampColors.map(async (stamp) => {
+      try {
+        const image = await Utils.loadImage(stamp.src);
+        this._creamStampImages.set(stamp.src, image);
+      } catch (error) {
+        console.warn('cream stamp load failed', stamp.src, error);
+      }
+    }));
   },
 
   _renderPreview() {
@@ -51,6 +61,8 @@ const ScreenshotModule = {
       maskCanvas,
       creamColor: App.state.creamColor || CONFIG.creamColors[0],
       strokes: App.state.paintStrokes || [],
+      creamStrokes: App.state.creamStrokes || [],
+      creamStampImages: this._creamStampImages,
       decorations: App.state.decorations || [],
       decorationImages: this._decorationImages,
     });

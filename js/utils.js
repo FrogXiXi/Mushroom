@@ -390,6 +390,8 @@ const Utils = {
       creamColor,
       fillCreamOverlay = false,
       strokes = [],
+      creamStrokes = [],
+      creamStampImages = new Map(),
       decorations = [],
       decorationImages = new Map(),
       drawBase = true,
@@ -411,13 +413,35 @@ const Utils = {
       });
     }
 
+    if (creamStrokes.length > 0) {
+      Utils.renderMaskedLayer(ctx, maskCanvas, (layerCtx) => {
+        creamStrokes.forEach((stroke) => {
+          if (!stroke.points || stroke.points.length < 2) {
+            return;
+          }
+          const stampImg = creamStampImages.get(stroke.stampSrc);
+          if (!stampImg) {
+            return;
+          }
+          const absolutePoints = stroke.points.map((point) => Utils.getFramePoint(layout.frame, point));
+          Utils.drawCreamStampStroke(layerCtx, absolutePoints, {
+            stampImg,
+            opacity: stroke.opacity,
+            width: stroke.width,
+            seed: stroke.seed,
+          });
+        });
+      });
+    }
+
     Utils.renderMaskedLayer(ctx, maskCanvas, (layerCtx) => {
       strokes.forEach((stroke) => {
         if (!stroke.points || stroke.points.length < 2) {
           return;
         }
         const absolutePoints = stroke.points.map((point) => Utils.getFramePoint(layout.frame, point));
-        Utils.drawCreamStroke(layerCtx, absolutePoints, {
+        const drawFn = stroke.type === 'crayon' ? Utils.drawCrayonStroke : Utils.drawCreamStroke;
+        drawFn(layerCtx, absolutePoints, {
           color: stroke.color,
           opacity: stroke.opacity,
           width: stroke.width,
@@ -530,6 +554,230 @@ const Utils = {
   },
 
   drawCrayonStroke(ctx, points, options) {
-    Utils.drawCreamStroke(ctx, points, options);
+    if (!points || points.length < 2) {
+      return;
+    }
+
+    const width = Math.max(4, options.width * 0.94);
+    const opacity = Utils.clamp(options.opacity, 0.18, 1);
+    const color = options.color;
+    const seed = options.seed || 1;
+
+    ctx.save();
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (let layer = 0; layer < 3; layer += 1) {
+      const layerOpacity = layer === 0 ? opacity * 0.55 : layer === 1 ? opacity * 0.35 : opacity * 0.18;
+      const layerWidth = layer === 0 ? width : layer === 1 ? width * 0.72 : width * 1.12;
+      const noiseAmp = layer === 2 ? 0.6 : 0.3;
+
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        const noise = Utils.seededNoise(seed + layer * 31, index * 3 + layer) * width * noiseAmp * 0.12;
+        const px = point.x + noise;
+        const py = point.y + noise * 0.8;
+        if (index === 0) {
+          ctx.moveTo(px, py);
+        } else {
+          ctx.lineTo(px, py);
+        }
+      });
+      ctx.strokeStyle = Utils.hexToRgba(color, layerOpacity);
+      ctx.lineWidth = layerWidth;
+      ctx.stroke();
+    }
+
+    for (let index = 1; index < points.length; index += 1) {
+      const prev = points[index - 1];
+      const point = points[index];
+      const segmentLength = Math.hypot(point.x - prev.x, point.y - prev.y);
+      const spacing = Math.max(3, width * 0.18);
+      const stepCount = Math.max(1, Math.floor(segmentLength / spacing));
+
+      for (let step = 0; step <= stepCount; step += 1) {
+        const progress = step / stepCount;
+        const cx = prev.x + (point.x - prev.x) * progress;
+        const cy = prev.y + (point.y - prev.y) * progress;
+        const noise = Utils.seededNoise(seed + index * 7, step + 1);
+        const grainSize = width * (0.08 + Math.abs(noise) * 0.14);
+
+        ctx.fillStyle = Utils.hexToRgba(color, opacity * (0.12 + Math.abs(noise) * 0.16));
+        ctx.fillRect(
+          cx + noise * width * 0.2,
+          cy + Utils.seededNoise(seed + step, index) * width * 0.2,
+          grainSize,
+          grainSize * (0.6 + Math.abs(noise) * 0.5),
+        );
+      }
+    }
+
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      if (index === 0) {
+        ctx.moveTo(point.x, point.y);
+      } else {
+        ctx.lineTo(point.x, point.y);
+      }
+    });
+    ctx.strokeStyle = Utils.hexToRgba('#FFFFFF', opacity * 0.08);
+    ctx.lineWidth = Math.max(1, width * 0.18);
+    ctx.stroke();
+
+    ctx.restore();
+  },
+
+  drawCreamStampStroke(ctx, points, options) {
+    if (!points || points.length < 2 || !options.stampImg) {
+      return;
+    }
+
+    const width = Math.max(8, options.width * 0.94);
+    const opacity = Utils.clamp(options.opacity, 0.18, 1);
+    const seed = options.seed || 1;
+    const stampImg = options.stampImg;
+    const stampSize = width * 1.6;
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
+
+    for (let index = 1; index < points.length; index += 1) {
+      const prev = points[index - 1];
+      const point = points[index];
+      const segmentLength = Math.hypot(point.x - prev.x, point.y - prev.y);
+      const spacing = Math.max(stampSize * 0.35, width * 0.42);
+      const stepCount = Math.max(1, Math.floor(segmentLength / spacing));
+      const angle = Math.atan2(point.y - prev.y, point.x - prev.x);
+
+      for (let step = 0; step <= stepCount; step += 1) {
+        const progress = step / stepCount;
+        const cx = prev.x + (point.x - prev.x) * progress;
+        const cy = prev.y + (point.y - prev.y) * progress;
+        const noise = Utils.seededNoise(seed + index * 7, step + 1);
+        const size = stampSize * (0.88 + noise * 0.12);
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angle + noise * 0.15);
+        ctx.drawImage(stampImg, -size / 2, -size / 2, size, size);
+        ctx.restore();
+      }
+    }
+
+    if (points.length >= 2) {
+      const last = points[points.length - 1];
+      const size = stampSize * 0.92;
+      ctx.drawImage(stampImg, last.x - size / 2, last.y - size / 2, size, size);
+    }
+
+    ctx.restore();
+  },
+
+  hslToHex(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n) => {
+      const k = (n + h / 30) % 12;
+      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
+  },
+
+  drawColorSlider(canvas, thumbEl, currentColor, onChange) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const gradient = ctx.createLinearGradient(0, 0, w, 0);
+    const steps = 12;
+    for (let i = 0; i <= steps; i += 1) {
+      const hue = (i / steps) * 360;
+      gradient.addColorStop(i / steps, `hsl(${hue}, 85%, 60%)`);
+    }
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    const radius = h / 2;
+    ctx.moveTo(radius, 0);
+    ctx.lineTo(w - radius, 0);
+    ctx.arc(w - radius, radius, radius, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(radius, h);
+    ctx.arc(radius, radius, radius, Math.PI / 2, -Math.PI / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    const findHueFromHex = (hex) => {
+      const safe = hex.replace('#', '');
+      const r = parseInt(safe.substring(0, 2), 16) / 255;
+      const g = parseInt(safe.substring(2, 4), 16) / 255;
+      const b = parseInt(safe.substring(4, 6), 16) / 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const d = max - min;
+      if (d === 0) return 0;
+      let hue;
+      if (max === r) hue = ((g - b) / d) % 6;
+      else if (max === g) hue = (b - r) / d + 2;
+      else hue = (r - g) / d + 4;
+      hue = Math.round(hue * 60);
+      if (hue < 0) hue += 360;
+      return hue;
+    };
+
+    const updateThumb = (hue) => {
+      const x = (hue / 360) * w;
+      thumbEl.style.left = `${x}px`;
+      thumbEl.style.background = `hsl(${hue}, 85%, 60%)`;
+    };
+
+    const initialHue = findHueFromHex(currentColor);
+    updateThumb(initialHue);
+
+    let dragging = false;
+
+    const handleMove = (clientX) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Utils.clamp(clientX - rect.left, 0, rect.width);
+      const hue = (x / rect.width) * 360;
+      updateThumb(hue);
+      const hex = Utils.hslToHex(hue, 85, 60);
+      onChange(hex);
+    };
+
+    const onPointerDown = (e) => {
+      e.preventDefault();
+      dragging = true;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      handleMove(clientX);
+
+      const onPointerMove = (moveEvent) => {
+        if (!dragging) return;
+        moveEvent.preventDefault();
+        const cx = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+        handleMove(cx);
+      };
+      const onPointerUp = () => {
+        dragging = false;
+        document.removeEventListener('mousemove', onPointerMove);
+        document.removeEventListener('touchmove', onPointerMove);
+        document.removeEventListener('mouseup', onPointerUp);
+        document.removeEventListener('touchend', onPointerUp);
+      };
+      document.addEventListener('mousemove', onPointerMove, { passive: false });
+      document.addEventListener('touchmove', onPointerMove, { passive: false });
+      document.addEventListener('mouseup', onPointerUp);
+      document.addEventListener('touchend', onPointerUp);
+    };
+
+    canvas.addEventListener('mousedown', onPointerDown);
+    canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+
+    return {
+      setColor(hex) {
+        updateThumb(findHueFromHex(hex));
+      },
+    };
   },
 };

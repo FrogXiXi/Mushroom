@@ -6,6 +6,7 @@
 const DecorateModule = {
 	elements: [],
 	strokes: [],
+	creamStrokes: [],
 	activeTab: 'candles',
 	_cakeLayers: [],
 	_layout: null,
@@ -20,6 +21,9 @@ const DecorateModule = {
 	_paletteGhost: null,
 	_pinch: null,
 	_cleanupFns: [],
+	_creamStampImages: new Map(),
+	_selectedStampSrc: null,
+	_colorSliderCtrl: null,
 
 	async init() {
 		this.canvas = document.getElementById('decorate-canvas');
@@ -28,9 +32,14 @@ const DecorateModule = {
 		this.itemsTrack = document.getElementById('decorate-items-track');
 		this.itemsContainer = document.getElementById('decorate-items');
 		this.paintTools = document.getElementById('decorate-paint-tools');
+		this.creamTools = document.getElementById('decorate-cream-tools');
 		this.tipEl = document.getElementById('decorate-tip');
 		this.selectionTools = document.getElementById('decorate-selection-tools');
 		this.strokes = (App.state.paintStrokes || []).map((stroke) => ({
+			...stroke,
+			points: (stroke.points || []).map((point) => ({ ...point })),
+		}));
+		this.creamStrokes = (App.state.creamStrokes || []).map((stroke) => ({
 			...stroke,
 			points: (stroke.points || []).map((point) => ({ ...point })),
 		}));
@@ -40,7 +49,9 @@ const DecorateModule = {
 		this._layout = Utils.getCakeLayout(this.canvas, this._cakeLayers);
 		this._maskCanvas = Utils.createMaskCanvas(this.canvas.width, this.canvas.height, this._layout);
 		await this._hydrateElements();
+		await this._loadCreamStampImages();
 		this._setupTabs();
+		this._setupCreamControls();
 		this._setupPaintControls();
 		this._bindCanvasEvents();
 		this._bindUiEvents();
@@ -82,6 +93,21 @@ const DecorateModule = {
 		}
 	},
 
+	async _loadCreamStampImages() {
+		this._creamStampImages.clear();
+		await Promise.all(CONFIG.creamStampColors.map(async (stamp) => {
+			try {
+				const image = await Utils.loadImage(stamp.src);
+				this._creamStampImages.set(stamp.src, image);
+			} catch (error) {
+				console.warn('cream stamp load failed', stamp.src, error);
+			}
+		}));
+		if (!this._selectedStampSrc && CONFIG.creamStampColors.length > 0) {
+			this._selectedStampSrc = CONFIG.creamStampColors[0].src;
+		}
+	},
+
 	_setupTabs() {
 		const tabs = document.querySelectorAll('#decorate-tabs .tab-btn');
 		tabs.forEach((tab) => {
@@ -90,20 +116,54 @@ const DecorateModule = {
 				tabs.forEach((item) => item.classList.remove('active'));
 				tab.classList.add('active');
 				this.activeTab = tab.dataset.tab;
+				this.creamTools.classList.toggle('hidden', this.activeTab !== 'cream');
 				this.paintTools.classList.toggle('hidden', this.activeTab !== 'paint');
-				this.carousel.classList.toggle('hidden', this.activeTab === 'paint');
+				this.carousel.classList.toggle('hidden', this.activeTab === 'cream' || this.activeTab === 'paint');
 				this._updateSelectionTools();
-				this.tipEl.textContent = this.activeTab === 'paint'
-					? '像拿裱花袋一样在蛋糕上继续挤奶油，装饰会同步预览在成品上。'
-					: '按住下方素材直接拖到蛋糕上；手机端可先点选素材，再用下方按钮放大、缩小、旋转或删除。';
+				this._updateTip();
 				this._renderItems();
 				this._render();
 			};
 		});
+		this.creamTools.classList.toggle('hidden', this.activeTab !== 'cream');
 		this.paintTools.classList.toggle('hidden', this.activeTab !== 'paint');
-		this.carousel.classList.toggle('hidden', this.activeTab === 'paint');
-		this.tipEl.textContent = '按住下方素材直接拖到蛋糕上；手机端可先点选素材，再用下方按钮放大、缩小、旋转或删除。';
+		this.carousel.classList.toggle('hidden', this.activeTab === 'cream' || this.activeTab === 'paint');
+		this._updateTip();
 		this._renderItems();
+	},
+
+	_updateTip() {
+		const tips = {
+			cream: '像拿裱花袋一样在蛋糕上挤出奶油花纹，选好颜色和花嘴大小开始吧！',
+			paint: '选好颜色和笔刷大小，在蛋糕上画出你喜欢的卡通图案吧！',
+		};
+		if (tips[this.activeTab]) {
+			this.tipEl.textContent = tips[this.activeTab];
+		} else {
+			this.tipEl.textContent = '按住下方素材直接拖到蛋糕上；手机端可先点选素材，再用下方按钮放大、缩小、旋转或删除。';
+		}
+	},
+
+	_setupCreamControls() {
+		const picker = document.getElementById('decorate-cream-stamp-picker');
+		const creamSizeInput = document.getElementById('decorate-cream-size');
+		picker.innerHTML = '';
+		CONFIG.creamStampColors.forEach((stamp) => {
+			const chip = document.createElement('button');
+			chip.type = 'button';
+			chip.className = `cream-stamp-chip${this._selectedStampSrc === stamp.src ? ' active' : ''}`;
+			chip.innerHTML = `<img src="${CONFIG.imgBase + stamp.src}.webp" alt="${stamp.name}" draggable="false">`;
+			chip.querySelector('img').onerror = function onStampError() {
+				this.src = `${CONFIG.imgBase + stamp.src}.png`;
+			};
+			chip.onclick = () => {
+				this._selectedStampSrc = stamp.src;
+				picker.querySelectorAll('.cream-stamp-chip').forEach((item) => item.classList.remove('active'));
+				chip.classList.add('active');
+			};
+			picker.appendChild(chip);
+		});
+		creamSizeInput.value = App.state.editorSettings.creamSize || 24;
 	},
 
 	_setupPaintControls() {
@@ -122,10 +182,23 @@ const DecorateModule = {
 				App.state.editorSettings.color = color;
 				picker.querySelectorAll('.paint-color-chip').forEach((item) => item.classList.remove('active'));
 				chip.classList.add('active');
+				if (this._colorSliderCtrl) {
+					this._colorSliderCtrl.setColor(color);
+				}
 				App.saveState();
 			};
 			picker.appendChild(chip);
 		});
+
+		const sliderCanvas = document.getElementById('decorate-paint-slider-canvas');
+		const sliderThumb = document.getElementById('decorate-paint-slider-thumb');
+		if (sliderCanvas && sliderThumb) {
+			this._colorSliderCtrl = Utils.drawColorSlider(sliderCanvas, sliderThumb, settings.color, (hex) => {
+				App.state.editorSettings.color = hex;
+				picker.querySelectorAll('.paint-color-chip').forEach((item) => item.classList.remove('active'));
+				App.saveState();
+			});
+		}
 
 		sizeInput.value = settings.size;
 		opacityInput.value = Math.round(settings.opacity * 100);
@@ -146,6 +219,10 @@ const DecorateModule = {
 			App.state.editorSettings.opacity = parseInt(event.target.value, 10) / 100;
 			App.saveState();
 		};
+		document.getElementById('decorate-cream-size').oninput = (event) => {
+			App.state.editorSettings.creamSize = parseInt(event.target.value, 10);
+			App.saveState();
+		};
 		document.getElementById('decorate-undo').onclick = () => {
 			this.strokes.pop();
 			this._syncState();
@@ -153,6 +230,16 @@ const DecorateModule = {
 		};
 		document.getElementById('decorate-clear').onclick = () => {
 			this.strokes = [];
+			this._syncState();
+			this._render();
+		};
+		document.getElementById('decorate-cream-undo').onclick = () => {
+			this.creamStrokes.pop();
+			this._syncState();
+			this._render();
+		};
+		document.getElementById('decorate-cream-clear').onclick = () => {
+			this.creamStrokes = [];
 			this._syncState();
 			this._render();
 		};
@@ -172,7 +259,7 @@ const DecorateModule = {
 	},
 
 	_renderItems() {
-		if (this.activeTab === 'paint') {
+		if (this.activeTab === 'cream' || this.activeTab === 'paint') {
 			this.itemsContainer.innerHTML = '';
 			return;
 		}
@@ -348,7 +435,6 @@ const DecorateModule = {
 				return;
 			}
 
-			// 双指手势：旋转 + 缩放
 			if (event.touches && event.touches.length === 2 && this._selectedIdx >= 0) {
 				event.preventDefault();
 				const t1 = event.touches[0];
@@ -388,24 +474,37 @@ const DecorateModule = {
 
 			this._selectedIdx = -1;
 			this._updateSelectionTools();
-			if (this.activeTab !== 'paint' || !Utils.pointInMask(this._maskCanvas, point.x, point.y)) {
+
+			const isDrawingTab = this.activeTab === 'cream' || this.activeTab === 'paint';
+			if (!isDrawingTab || !Utils.pointInMask(this._maskCanvas, point.x, point.y)) {
 				this._render();
 				return;
 			}
 
 			this._drawing = true;
-			this._currentStroke = {
-				points: [this._normalizePoint(point)],
-				color: App.state.editorSettings.color,
-				opacity: App.state.editorSettings.opacity,
-				width: parseInt(document.getElementById('decorate-brush-size').value, 10) * 1.6,
-				seed: Date.now() % 100000,
-			};
+			if (this.activeTab === 'cream') {
+				this._currentStroke = {
+					type: 'cream',
+					points: [this._normalizePoint(point)],
+					stampSrc: this._selectedStampSrc,
+					opacity: 0.92,
+					width: parseInt(document.getElementById('decorate-cream-size').value, 10) * 1.6,
+					seed: Date.now() % 100000,
+				};
+			} else {
+				this._currentStroke = {
+					type: 'crayon',
+					points: [this._normalizePoint(point)],
+					color: App.state.editorSettings.color,
+					opacity: App.state.editorSettings.opacity,
+					width: parseInt(document.getElementById('decorate-brush-size').value, 10) * 1.2,
+					seed: Date.now() % 100000,
+				};
+			}
 			this._render();
 		};
 
 		const move = (event) => {
-			// 双指手势处理
 			if (this._pinch && event.touches && event.touches.length === 2 && this._selectedIdx >= 0) {
 				event.preventDefault();
 				const t1 = event.touches[0];
@@ -420,7 +519,6 @@ const DecorateModule = {
 				return;
 			}
 
-			// 双指变单指：从缩放平滑过渡到拖拽
 			if (this._pinch && event.touches && event.touches.length === 1 && this._selectedIdx >= 0) {
 				this._pinch = null;
 				const pt = Utils.getCanvasPos(this.canvas, event);
@@ -458,7 +556,6 @@ const DecorateModule = {
 		const end = (event) => {
 			clearTimeout(this._longPressTimer);
 
-			// 双指变单指时不要结束状态，让 move 处理过渡
 			const remainingTouches = event.touches ? event.touches.length : 0;
 			if (this._pinch && remainingTouches > 0) {
 				return;
@@ -466,7 +563,11 @@ const DecorateModule = {
 			this._pinch = null;
 
 			if (this._drawing && this._currentStroke && this._currentStroke.points.length > 1) {
-				this.strokes.push(this._currentStroke);
+				if (this._currentStroke.type === 'cream') {
+					this.creamStrokes.push(this._currentStroke);
+				} else {
+					this.strokes.push(this._currentStroke);
+				}
 				this._syncState();
 			}
 
@@ -551,7 +652,6 @@ const DecorateModule = {
 			const size = this._getElementRenderSize(element);
 			const dx = point.x - position.x;
 			const dy = point.y - position.y;
-			// 将点转换到元素本地坐标系以正确处理旋转
 			const angle = -(element.rotation || 0);
 			const localX = dx * Math.cos(angle) - dy * Math.sin(angle);
 			const localY = dx * Math.sin(angle) + dy * Math.cos(angle);
@@ -565,12 +665,37 @@ const DecorateModule = {
 	_render() {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		Utils.drawCakeLayers(this.ctx, this._layout);
+		this._renderCreamStrokes();
 		this._renderStrokes();
 		this._renderElements();
 	},
 
+	_renderCreamStrokes() {
+		const allStrokes = this._currentStroke && this._currentStroke.type === 'cream'
+			? [...this.creamStrokes, this._currentStroke]
+			: this.creamStrokes;
+
+		Utils.renderMaskedLayer(this.ctx, this._maskCanvas, (layerCtx) => {
+			allStrokes.forEach((stroke) => {
+				if (!stroke.points || stroke.points.length < 2) {
+					return;
+				}
+				const stampImg = this._creamStampImages.get(stroke.stampSrc);
+				if (!stampImg) {
+					return;
+				}
+				Utils.drawCreamStampStroke(layerCtx, this._getStrokeAbsolutePoints(stroke), {
+					stampImg,
+					opacity: stroke.opacity,
+					width: stroke.width,
+					seed: stroke.seed,
+				});
+			});
+		});
+	},
+
 	_renderStrokes() {
-		const allStrokes = this._currentStroke
+		const allStrokes = this._currentStroke && this._currentStroke.type === 'crayon'
 			? [...this.strokes, this._currentStroke]
 			: this.strokes;
 
@@ -579,7 +704,7 @@ const DecorateModule = {
 				if (!stroke.points || stroke.points.length < 2) {
 					return;
 				}
-				Utils.drawCreamStroke(layerCtx, this._getStrokeAbsolutePoints(stroke), {
+				Utils.drawCrayonStroke(layerCtx, this._getStrokeAbsolutePoints(stroke), {
 					color: stroke.color,
 					opacity: stroke.opacity,
 					width: stroke.width,
@@ -612,7 +737,8 @@ const DecorateModule = {
 		if (!this.selectionTools) {
 			return;
 		}
-		const shouldShow = this.activeTab !== 'paint' && this._selectedIdx >= 0 && this._selectedIdx < this.elements.length;
+		const isDrawingTab = this.activeTab === 'cream' || this.activeTab === 'paint';
+		const shouldShow = !isDrawingTab && this._selectedIdx >= 0 && this._selectedIdx < this.elements.length;
 		this.selectionTools.classList.toggle('hidden', !shouldShow);
 	},
 
@@ -649,6 +775,10 @@ const DecorateModule = {
 
 	_syncState() {
 		App.state.paintStrokes = this.strokes.map((stroke) => ({
+			...stroke,
+			points: stroke.points.map((point) => ({ ...point })),
+		}));
+		App.state.creamStrokes = this.creamStrokes.map((stroke) => ({
 			...stroke,
 			points: stroke.points.map((point) => ({ ...point })),
 		}));

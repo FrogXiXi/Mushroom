@@ -2,7 +2,7 @@
  * 全局配置 - 素材路径、颜色、常量
  */
 const CONFIG = {
-  stateVersion: 2,
+  stateVersion: 3,
 
   // 寿星信息（修改此处即可自定义）
   birthday: {
@@ -22,6 +22,15 @@ const CONFIG = {
     { id: 'blue', legacyIds: ['light_taro'], name: '淡芋紫', hex: '#D8B4E2', css: 'rgba(216,180,226,0.9)', src: 'making/ingredients/food_coloring_bottles/blue', singleCakeSrc: 'cake/bases/single/creamsingle/cream_04', doubleCakeSrc: 'cake/bases/double/cream/cream_04' },
     { id: 'purple', legacyIds: ['lavender'], name: '薰衣草紫', hex: '#C3A6D8', css: 'rgba(195,166,216,0.9)', src: 'making/ingredients/food_coloring_bottles/purple', singleCakeSrc: 'cake/bases/single/creamsingle/cream_05', doubleCakeSrc: 'cake/bases/double/cream/cream_05' },
     { id: 'mint_green', name: '薄荷绿', hex: '#A8E6CF', css: 'rgba(168,230,207,0.9)', src: 'making/ingredients/food_coloring_bottles/mint_green', singleCakeSrc: 'cake/bases/single/creamsingle/cream_06', doubleCakeSrc: 'cake/bases/double/cream/cream_06' },
+  ],
+
+  creamStampColors: [
+    { id: 'stamp_pink', name: '粉色奶油', hex: '#FFD6DC', src: 'decorations/cream/creams_stamp_pink' },
+    { id: 'stamp_red', name: '红色奶油', hex: '#FFB5A7', src: 'decorations/cream/creams_stamp_red' },
+    { id: 'stamp_yellow', name: '黄色奶油', hex: '#F4D06F', src: 'decorations/cream/creams_stamp_yellow' },
+    { id: 'stamp_green', name: '绿色奶油', hex: '#A8E6CF', src: 'decorations/cream/creams_stamp_green' },
+    { id: 'stamp_blue', name: '蓝色奶油', hex: '#D8B4E2', src: 'decorations/cream/creams_stamp_blue' },
+    { id: 'stamp_purple', name: '紫色奶油', hex: '#C3A6D8', src: 'decorations/cream/creams_stamp_purple' },
   ],
 
   editorColors: [
