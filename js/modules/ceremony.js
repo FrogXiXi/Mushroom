@@ -28,6 +28,8 @@ const CeremonyModule = {
     this.hintEl = document.getElementById('ceremony-hint');
     this.wishText = document.getElementById('ceremony-wish-text');
     this.actionBtn = document.getElementById('ceremony-action-btn');
+    this.volMeter = document.getElementById('ceremony-vol-meter');
+    this.volBar = document.getElementById('ceremony-vol-bar');
 
     this._allLit = false;
     this._allBlown = false;
@@ -54,6 +56,9 @@ const CeremonyModule = {
     this.hintEl.classList.remove('ceremony-hint--center');
     this.actionBtn.classList.add('hidden');
     this.actionBtn.textContent = '许完愿了，去吹蜡烛';
+    if (this.volMeter) {
+      this.volMeter.classList.add('hidden');
+    }
   },
 
   async _loadAssets() {
@@ -348,6 +353,9 @@ const CeremonyModule = {
     this.actionBtn.classList.add('hidden');
     this.hintEl.classList.remove('ceremony-hint--center');
     this.hintEl.textContent = '对着屏幕吹气，或直接点蜡烛火苗';
+    if (this.volMeter) {
+      this.volMeter.classList.remove('hidden');
+    }
     this._requestMic();
   },
 
@@ -385,6 +393,9 @@ const CeremonyModule = {
     if (!AudioContextClass) {
       this._micMode = false;
       this.hintEl.textContent = '点击蜡烛火焰熄灭蜡烛';
+      if (this.volMeter) {
+        this.volMeter.classList.add('hidden');
+      }
       return;
     }
 
@@ -404,9 +415,18 @@ const CeremonyModule = {
     let warmupFrames = 0;
     let blowFrames = 0;
 
+    const updateVolumeMeter = (level) => {
+      if (this.volBar) {
+        this.volBar.style.width = `${Math.min(100, level * 100)}%`;
+      }
+    };
+
     const check = () => {
       if (this._allBlown || !this._analyser) {
         this._stopMicCapture();
+        if (this.volMeter) {
+          this.volMeter.classList.add('hidden');
+        }
         return;
       }
 
@@ -430,17 +450,20 @@ const CeremonyModule = {
         baselineScore = warmupFrames === 0 ? blowScore : baselineScore * 0.72 + blowScore * 0.28;
         baselineBass = warmupFrames === 0 ? bassEnergy : baselineBass * 0.72 + bassEnergy * 0.28;
         warmupFrames += 1;
+        updateVolumeMeter(0);
       } else {
         baselineScore = baselineScore * 0.96 + blowScore * 0.04;
         baselineBass = baselineBass * 0.96 + bassEnergy * 0.04;
+        const normalizedLevel = Math.min(1, (blowScore - baselineScore) / (baselineScore * 2));
+        updateVolumeMeter(normalizedLevel);
       }
 
-      const dynamicScoreThreshold = Math.max(20, baselineScore * 1.85);
-      const dynamicBassThreshold = Math.max(10, baselineBass * 1.6);
-      const burstDetected = blowScore >= dynamicScoreThreshold && (peak >= 16 || rms >= 9);
-      const sustainedDetected = blowScore >= Math.max(16, baselineScore * 1.45)
+      const dynamicScoreThreshold = Math.max(12, baselineScore * 1.45);
+      const dynamicBassThreshold = Math.max(6, baselineBass * 1.3);
+      const burstDetected = blowScore >= dynamicScoreThreshold && (peak >= 12 || rms >= 6);
+      const sustainedDetected = blowScore >= Math.max(10, baselineScore * 1.25)
         && bassEnergy >= dynamicBassThreshold
-        && rms >= 7;
+        && rms >= 5;
 
       if (burstDetected || sustainedDetected) {
         blowFrames += 1;
@@ -448,13 +471,16 @@ const CeremonyModule = {
         blowFrames = Math.max(0, blowFrames - 1);
       }
 
-      if (blowFrames >= 8) {
+      if (blowFrames >= 6) {
         this._candles.forEach((candle) => {
           candle.blown = true;
         });
         this._draw();
         this._onAllBlown();
         this._stopMicCapture();
+        if (this.volMeter) {
+          this.volMeter.classList.add('hidden');
+        }
         return;
       }
 
@@ -497,6 +523,9 @@ const CeremonyModule = {
     this.actionBtn.textContent = '完成吹蜡烛，去切蛋糕';
     this.actionBtn.classList.remove('hidden');
     this.hintEl.textContent = '蜡烛已经吹灭，点右下角切蛋糕';
+    if (this.volMeter) {
+      this.volMeter.classList.add('hidden');
+    }
     this._playBlowOutSound();
     this._draw();
     this.overlay.style.background = 'rgba(0,0,0,0)';

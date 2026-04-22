@@ -646,8 +646,8 @@ const Utils = {
       const prev = points[index - 1];
       const point = points[index];
       const segmentLength = Math.hypot(point.x - prev.x, point.y - prev.y);
-      const spacing = Math.max(stampSize * 0.35, width * 0.42);
-      const stepCount = Math.max(1, Math.floor(segmentLength / spacing));
+      const spacing = Math.max(stampSize * 0.6, width * 0.8);
+      const stepCount = Math.max(1, Math.ceil(segmentLength / spacing));
       const angle = Math.atan2(point.y - prev.y, point.x - prev.x);
 
       for (let step = 0; step <= stepCount; step += 1) {
