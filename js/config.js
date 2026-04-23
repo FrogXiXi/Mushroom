@@ -2,7 +2,7 @@
  * 全局配置 - 素材路径、颜色、常量
  */
 const CONFIG = {
-  stateVersion: 5,
+  stateVersion: 6,
 
   // 寿星信息（修改此处即可自定义）
   birthday: {

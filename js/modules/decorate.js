@@ -134,7 +134,7 @@ const DecorateModule = {
 
 	_updateTip() {
 		const tips = {
-			cream: '选好奶油颜色和花嘴大小，在蛋糕上像拿裱花袋一样挤出花纹吧！',
+			cream: '选好奶油花型和大小，点击蛋糕放置裱花图章吧！',
 			paint: '选好颜色和笔刷大小，在蛋糕上画出你喜欢的卡通图案吧！',
 		};
 		if (tips[this.activeTab]) {
@@ -493,27 +493,34 @@ const DecorateModule = {
 				return;
 			}
 
-			this._drawing = true;
 			if (this.activeTab === 'cream') {
-				this._currentStroke = {
-					type: 'cream',
-					points: [this._normalizePoint(point)],
+				const normalized = this._normalizePoint(point);
+				const seed = Date.now() % 100000;
+				const noise = Utils.seededNoise(seed, 1);
+				this.creamStrokes.push({
+					type: 'cream-stamp',
 					stampSrc: this._selectedStampSrc,
-					opacity: 0.92,
+					nx: normalized.nx,
+					ny: normalized.ny,
 					width: parseInt(document.getElementById('decorate-cream-size').value, 10) * 1.6,
-					seed: Date.now() % 100000,
-				};
-			} else {
-				this._currentStroke = {
-					type: 'crayon',
-					points: [this._normalizePoint(point)],
-					color: App.state.editorSettings.color,
-					opacity: App.state.editorSettings.opacity,
-					width: parseInt(document.getElementById('decorate-brush-size').value, 10) * 1.2,
-					brightness: parseInt(document.getElementById('decorate-paint-brightness').value, 10) || 72,
-					seed: Date.now() % 100000,
-				};
+					rotation: noise * 0.18,
+					seed,
+				});
+				this._syncState();
+				this._render();
+				return;
 			}
+
+			this._drawing = true;
+			this._currentStroke = {
+				type: 'crayon',
+				points: [this._normalizePoint(point)],
+				color: App.state.editorSettings.color,
+				opacity: App.state.editorSettings.opacity,
+				width: parseInt(document.getElementById('decorate-brush-size').value, 10) * 1.2,
+				brightness: parseInt(document.getElementById('decorate-paint-brightness').value, 10) || 72,
+				seed: Date.now() % 100000,
+			};
 			this._render();
 		};
 
@@ -684,26 +691,39 @@ const DecorateModule = {
 	},
 
 	_renderCreamStrokes() {
-		const allStrokes = this._currentStroke && this._currentStroke.type === 'cream'
-			? [...this.creamStrokes, this._currentStroke]
-			: this.creamStrokes;
-
-		Utils.renderMaskedLayer(this.ctx, this._maskCanvas, (layerCtx) => {
-			allStrokes.forEach((stroke) => {
-				if (!stroke.points || stroke.points.length < 2) {
-					return;
-				}
-				const stampImg = this._creamStampImages.get(stroke.stampSrc);
-				if (!stampImg) {
-					return;
-				}
-				Utils.drawCreamStampStroke(layerCtx, this._getStrokeAbsolutePoints(stroke), {
-					stampImg,
-					opacity: stroke.opacity,
-					width: stroke.width,
-					seed: stroke.seed,
+		const pathStrokes = this.creamStrokes.filter((s) => s.type !== 'cream-stamp' && s.points && s.points.length >= 2);
+		if (pathStrokes.length > 0) {
+			Utils.renderMaskedLayer(this.ctx, this._maskCanvas, (layerCtx) => {
+				pathStrokes.forEach((stroke) => {
+					const stampImg = this._creamStampImages.get(stroke.stampSrc);
+					if (!stampImg) {
+						return;
+					}
+					Utils.drawCreamStampStroke(layerCtx, this._getStrokeAbsolutePoints(stroke), {
+						stampImg,
+						opacity: stroke.opacity,
+						width: stroke.width,
+						seed: stroke.seed,
+					});
 				});
 			});
+		}
+
+		const stamps = this.creamStrokes.filter((s) => s.type === 'cream-stamp');
+		const frame = this._layout.frame;
+		stamps.forEach((stamp) => {
+			const stampImg = this._creamStampImages.get(stamp.stampSrc);
+			if (!stampImg) {
+				return;
+			}
+			const x = frame.x + stamp.nx * frame.width;
+			const y = frame.y + stamp.ny * frame.height;
+			const size = stamp.width * 1.6;
+			this.ctx.save();
+			this.ctx.translate(x, y);
+			this.ctx.rotate(stamp.rotation || 0);
+			this.ctx.drawImage(stampImg, -size / 2, -size / 2, size, size);
+			this.ctx.restore();
 		});
 	},
 

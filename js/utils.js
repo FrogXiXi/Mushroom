@@ -414,23 +414,42 @@ const Utils = {
     }
 
     if (creamStrokes.length > 0) {
-      Utils.renderMaskedLayer(ctx, maskCanvas, (layerCtx) => {
-        creamStrokes.forEach((stroke) => {
-          if (!stroke.points || stroke.points.length < 2) {
-            return;
-          }
-          const stampImg = creamStampImages.get(stroke.stampSrc);
-          if (!stampImg) {
-            return;
-          }
-          const absolutePoints = stroke.points.map((point) => Utils.getFramePoint(layout.frame, point));
-          Utils.drawCreamStampStroke(layerCtx, absolutePoints, {
-            stampImg,
-            opacity: stroke.opacity,
-            width: stroke.width,
-            seed: stroke.seed,
+      const pathStrokes = creamStrokes.filter((s) => s.type !== 'cream-stamp');
+      if (pathStrokes.length > 0) {
+        Utils.renderMaskedLayer(ctx, maskCanvas, (layerCtx) => {
+          pathStrokes.forEach((stroke) => {
+            if (!stroke.points || stroke.points.length < 2) {
+              return;
+            }
+            const stampImg = creamStampImages.get(stroke.stampSrc);
+            if (!stampImg) {
+              return;
+            }
+            const absolutePoints = stroke.points.map((point) => Utils.getFramePoint(layout.frame, point));
+            Utils.drawCreamStampStroke(layerCtx, absolutePoints, {
+              stampImg,
+              opacity: stroke.opacity,
+              width: stroke.width,
+              seed: stroke.seed,
+            });
           });
         });
+      }
+
+      const stamps = creamStrokes.filter((s) => s.type === 'cream-stamp');
+      stamps.forEach((stamp) => {
+        const stampImg = creamStampImages.get(stamp.stampSrc);
+        if (!stampImg) {
+          return;
+        }
+        const x = layout.frame.x + stamp.nx * layout.frame.width;
+        const y = layout.frame.y + stamp.ny * layout.frame.height;
+        const size = stamp.width * 1.6;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(stamp.rotation || 0);
+        ctx.drawImage(stampImg, -size / 2, -size / 2, size, size);
+        ctx.restore();
       });
     }
 
