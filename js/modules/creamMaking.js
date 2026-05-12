@@ -44,10 +44,11 @@ const CreamMakingModule = {
         'making/ingredients/eggs/cracked_left',
         'making/ingredients/eggs/cracked_right',
         'making/ingredients/eggs/yolk',
-        'making/containers/bowl/bowl',
+        CONFIG.bowlEmptySrc,
+        CONFIG.bowlEggSrc,
+        CONFIG.bowlCreamSrc,
         'making/tools/mixer/mixer',
         'making/tools/spatula/spatula',
-        CONFIG.bowlEggSrc,
         'cake/cream/textures/stroke_rich',
         'cake/cream/textures/stroke_soft',
         'cake/cream/textures/whipped',
@@ -92,6 +93,7 @@ const CreamMakingModule = {
     this.eggTool = document.getElementById('egg-tool');
     this.mixerTool = document.getElementById('mixer-tool');
     this.bowlArea = document.getElementById('cream-bowl-area');
+    this.bowlContentImg = document.getElementById('bowl-content-img');
     this.liquid = document.getElementById('cream-liquid');
     this.picker = document.getElementById('color-picker');
     this.progressWrap = document.getElementById('cream-progress');
@@ -130,6 +132,7 @@ const CreamMakingModule = {
     this.nextBtn.classList.add('hidden');
     this.nextBtn.onclick = null;
     this.eggTool.style.visibility = 'visible';
+    this._setBowlContent(null);
     this._setStageLayout('egg');
     this.spatulaTool.classList.add('hidden');
     this.spatulaTool.classList.remove('dragging');
@@ -799,10 +802,12 @@ const CreamMakingModule = {
 
   _renderLiquid(color = App.state.creamColor, mixFactor = this._colorMixed ? 1 : 0) {
     if (!this._eggAdded) {
+      this._setBowlContent(null);
       this.liquid.style.opacity = '0';
       this.liquid.style.transform = 'scale(0.94)';
       this.liquid.style.boxShadow = 'none';
       this.liquid.style.filter = 'none';
+      this.liquid.style.mixBlendMode = 'normal';
       return;
     }
 
@@ -813,23 +818,31 @@ const CreamMakingModule = {
     if (!this._colorMixed && safeMix <= 0) {
       if (whipFactor > 0.04) {
         const creamStrength = Utils.clamp(whipFactor, 0, 1);
-        this.liquid.style.background = `radial-gradient(circle at 48% 34%, rgba(255,255,255,${0.32 + creamStrength * 0.24}), rgba(255,250,242,${0.9}) 36%, rgba(247,236,220,${0.92}) 68%, rgba(233,218,196,0.95) 100%)`;
-        this.liquid.style.opacity = `${0.76 + creamStrength * 0.18}`;
-        this.liquid.style.boxShadow = `inset 0 ${10 + creamStrength * 16}px ${18 + creamStrength * 20}px rgba(255,255,255,${0.18 + creamStrength * 0.18})`;
-        this.liquid.style.transform = `scale(${0.98 + creamStrength * 0.16})`;
-        this.liquid.style.filter = `saturate(${0.82 + creamStrength * 0.08}) brightness(${1 + creamStrength * 0.08})`;
+        this._setBowlContent(CONFIG.bowlCreamSrc, {
+          opacity: 0.46 + creamStrength * 0.5,
+          filter: `saturate(${0.92 + creamStrength * 0.08}) brightness(${1 + creamStrength * 0.04})`,
+        });
+        this.liquid.style.opacity = '0';
+        this.liquid.style.boxShadow = 'none';
+        this.liquid.style.transform = 'scale(1)';
+        this.liquid.style.filter = 'none';
+        this.liquid.style.mixBlendMode = 'normal';
         return;
       }
 
-      const yolkUrl = Utils.loadImageUrl(CONFIG.bowlEggSrc);
-      this.liquid.style.background = `url("${yolkUrl}") center 44% / 42% auto no-repeat, radial-gradient(circle at 50% 42%, rgba(255,223,120,0.46), rgba(255,191,92,0.34) 58%, rgba(242,155,70,0.22) 100%)`;
-      this.liquid.style.opacity = '0.92';
-      this.liquid.style.boxShadow = 'inset 0 12px 20px rgba(255,245,214,0.28)';
-      this.liquid.style.transform = 'scale(0.98)';
-      this.liquid.style.filter = 'saturate(1.02)';
+      this._setBowlContent(CONFIG.bowlEggSrc, { composite: true });
+      this.liquid.style.opacity = '0';
+      this.liquid.style.boxShadow = 'none';
+      this.liquid.style.transform = 'scale(1)';
+      this.liquid.style.filter = 'none';
+      this.liquid.style.mixBlendMode = 'normal';
       return;
     }
 
+    this._setBowlContent(CONFIG.bowlCreamSrc, {
+      opacity: 0.96,
+      filter: 'saturate(1.02) brightness(1.02)',
+    });
     const topHighlight = Utils.hexToRgba(active.hex, 0.78 + safeMix * 0.1);
     const midTone = Utils.hexToRgba(active.hex, 0.86 + safeMix * 0.08);
     const bottomTone = Utils.hexToRgba(active.hex, 0.9 + safeMix * 0.05);
@@ -838,6 +851,7 @@ const CreamMakingModule = {
     this.liquid.style.boxShadow = `inset 0 ${8 + whipFactor * 12}px ${18 + whipFactor * 14}px rgba(255,255,255,${0.14 + safeMix * 0.16 + whipFactor * 0.08})`;
     this.liquid.style.transform = `scale(${0.99 + safeMix * 0.03 + whipFactor * 0.12})`;
     this.liquid.style.filter = `saturate(${1 + safeMix * 0.16}) brightness(${1 + whipFactor * 0.04})`;
+    this.liquid.style.mixBlendMode = 'multiply';
   },
 
   _renderApplyPreview() {
@@ -898,6 +912,36 @@ const CreamMakingModule = {
 
   _setHint(text) {
     document.getElementById('cream-hint').textContent = text;
+  },
+
+  _setBowlContent(src, options = {}) {
+    if (!this.bowlArea || !this.bowlContentImg) {
+      return;
+    }
+
+    const {
+      composite = false,
+      opacity = '',
+      filter = '',
+    } = options;
+
+    this.bowlArea.classList.toggle('bowl-state-composite', composite);
+
+    if (!src) {
+      this.bowlContentImg.classList.add('hidden');
+      this.bowlContentImg.removeAttribute('src');
+      this.bowlContentImg.style.opacity = '';
+      this.bowlContentImg.style.filter = '';
+      return;
+    }
+
+    const nextSrc = Utils.loadImageUrl(src, { extPriority: ['webp', 'png'] });
+    if (this.bowlContentImg.getAttribute('src') !== nextSrc) {
+      this.bowlContentImg.src = nextSrc;
+    }
+    this.bowlContentImg.classList.remove('hidden');
+    this.bowlContentImg.style.opacity = opacity === '' ? '' : String(opacity);
+    this.bowlContentImg.style.filter = filter;
   },
 
   _setMixerActive(active) {

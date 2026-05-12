@@ -16,15 +16,17 @@ const CONFIG = {
 
   // 奶油颜色（色卡）—— 后缀颜色是唯一映射依据，序号不参与逻辑判断
   creamColors: [
-    { id: 'white', name: '奶白', hex: '#FFF8F0', css: 'rgba(255,248,240,0.95)', src: 'making/ingredients/food_coloring_bottles/white', singleCakeSrc: 'cake/bases/single/creamsingle/cream_05white', doubleCakeSrc: 'cake/bases/double/cream/cream_05white', extPriority: ['png', 'webp'] },
-    { id: 'pink', legacyIds: ['light_pink'], name: '淡粉', hex: '#FFD6DC', css: 'rgba(255,214,220,0.9)', src: 'making/ingredients/food_coloring_bottles/pink', singleCakeSrc: 'cake/bases/single/creamsingle/cream_02pink', doubleCakeSrc: 'cake/bases/double/cream/cream_06pink', extPriority: ['png', 'webp'] },
-    { id: 'red', legacyIds: ['peach_pink'], name: '蜜桃粉', hex: '#FFB5A7', css: 'rgba(255,181,167,0.9)', src: 'making/ingredients/food_coloring_bottles/red', singleCakeSrc: 'cake/bases/single/creamsingle/cream_03red', doubleCakeSrc: 'cake/bases/double/cream/cream_03red', extPriority: ['png', 'webp'] },
-    { id: 'blue', legacyIds: ['light_taro'], name: '淡蓝', hex: '#B7DFFF', css: 'rgba(183,223,255,0.9)', src: 'making/ingredients/food_coloring_bottles/blue', singleCakeSrc: 'cake/bases/single/creamsingle/cream_04blue', doubleCakeSrc: 'cake/bases/double/cream/cream_01blue', extPriority: ['png', 'webp'] },
-    { id: 'purple', legacyIds: ['lavender'], name: '薰衣草紫', hex: '#C3A6D8', css: 'rgba(195,166,216,0.9)', src: 'making/ingredients/food_coloring_bottles/purple', singleCakeSrc: 'cake/bases/single/creamsingle/cream_01purple', doubleCakeSrc: 'cake/bases/double/cream/cream_02purple', extPriority: ['png', 'webp'] },
-    { id: 'mint_green', name: '薄荷绿', hex: '#A8E6CF', css: 'rgba(168,230,207,0.9)', src: 'making/ingredients/food_coloring_bottles/mint_green', singleCakeSrc: 'cake/bases/single/creamsingle/cream_06green', doubleCakeSrc: 'cake/bases/double/cream/cream_04green', extPriority: ['png', 'webp'] },
+    { id: 'white', name: '奶白', hex: '#FFF8F0', css: 'rgba(255,248,240,0.95)', src: 'making/ingredients/food_coloring_bottles/white', singleCakeSrc: 'cake/bases/single/creamsingle/cream_05white', doubleCakeSrc: 'cake/bases/double/cream/cream_05white', extPriority: ['webp', 'png'] },
+    { id: 'pink', legacyIds: ['light_pink'], name: '淡粉', hex: '#FFD6DC', css: 'rgba(255,214,220,0.9)', src: 'making/ingredients/food_coloring_bottles/pink', singleCakeSrc: 'cake/bases/single/creamsingle/cream_02pink', doubleCakeSrc: 'cake/bases/double/cream/cream_06pink', extPriority: ['webp', 'png'] },
+    { id: 'red', legacyIds: ['peach_pink'], name: '蜜桃粉', hex: '#FFB5A7', css: 'rgba(255,181,167,0.9)', src: 'making/ingredients/food_coloring_bottles/red', singleCakeSrc: 'cake/bases/single/creamsingle/cream_03red', doubleCakeSrc: 'cake/bases/double/cream/cream_03red', extPriority: ['webp', 'png'] },
+    { id: 'blue', legacyIds: ['light_taro'], name: '淡蓝', hex: '#B7DFFF', css: 'rgba(183,223,255,0.9)', src: 'making/ingredients/food_coloring_bottles/blue', singleCakeSrc: 'cake/bases/single/creamsingle/cream_04blue', doubleCakeSrc: 'cake/bases/double/cream/cream_01blue', extPriority: ['webp', 'png'] },
+    { id: 'purple', legacyIds: ['lavender'], name: '薰衣草紫', hex: '#C3A6D8', css: 'rgba(195,166,216,0.9)', src: 'making/ingredients/food_coloring_bottles/purple', singleCakeSrc: 'cake/bases/single/creamsingle/cream_01purple', doubleCakeSrc: 'cake/bases/double/cream/cream_02purple', extPriority: ['webp', 'png'] },
+    { id: 'mint_green', name: '薄荷绿', hex: '#A8E6CF', css: 'rgba(168,230,207,0.9)', src: 'making/ingredients/food_coloring_bottles/mint_green', singleCakeSrc: 'cake/bases/single/creamsingle/cream_06green', doubleCakeSrc: 'cake/bases/double/cream/cream_04green', extPriority: ['webp', 'png'] },
   ],
 
-  bowlEggSrc: 'making/ingredients/eggs/yolk',
+  bowlEmptySrc: 'making/containers/bowl/bowl_du空',
+  bowlEggSrc: 'making/containers/bowl/碗和鸡蛋',
+  bowlCreamSrc: 'making/containers/bowl/奶油',
 
   creamStampColors: [
     { id: 'stamp_pink', name: '粉色奶油', hex: '#FFD6DC', src: 'decorations/cream/creams_stamp_pink' },
