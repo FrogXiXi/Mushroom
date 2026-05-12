@@ -10,6 +10,8 @@ const App = {
       paintStrokes: [],
       creamStrokes: [],
       decorations: [],
+      micPermissionState: 'unknown',
+      cutSlices: [],
       magicCardRevealed: false,
       albumReminderPending: false,
       editorSettings: {
@@ -77,6 +79,8 @@ const App = {
       stateVersion: CONFIG.stateVersion,
       lastModule: normalizedLastModule,
       creamColor,
+      micPermissionState: state.micPermissionState || 'unknown',
+      cutSlices: Array.isArray(state.cutSlices) ? state.cutSlices : [],
       paintStrokes: (state.paintStrokes || []).map((stroke) => ({
         ...stroke,
         points: (stroke.points || []).map((point) => Utils.normalizeStoredPoint(point)),
@@ -139,6 +143,7 @@ const App = {
       || (serialized.paintStrokes || []).length > 0
       || (serialized.creamStrokes || []).length > 0
       || (serialized.decorations || []).length > 0
+      || (serialized.cutSlices || []).length > 0
       || serialized.magicCardRevealed !== defaults.magicCardRevealed
       || serialized.albumReminderPending !== defaults.albumReminderPending;
   },

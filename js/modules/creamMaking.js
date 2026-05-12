@@ -28,6 +28,8 @@ const CreamMakingModule = {
   _colorMixed: false,
   _bottleDrag: null,
   _bottleGhost: null,
+  _colorRunId: 0,
+  _applyRenderFrame: 0,
 
   async init() {
     this._cacheDom();
@@ -45,7 +47,15 @@ const CreamMakingModule = {
         'making/containers/bowl/bowl',
         'making/tools/mixer/mixer',
         'making/tools/spatula/spatula',
+        CONFIG.bowlEggSrc,
+        'cake/cream/textures/stroke_rich',
+        'cake/cream/textures/stroke_soft',
+        'cake/cream/textures/whipped',
         ...CONFIG.creamColors.map((item) => item.src),
+        ...CONFIG.creamColors.flatMap((item) => [
+          { src: item.singleCakeSrc, extPriority: item.extPriority },
+          { src: item.doubleCakeSrc, extPriority: item.extPriority },
+        ]),
       ];
 
       const [images, cakeLayers] = await Promise.all([
@@ -111,6 +121,8 @@ const CreamMakingModule = {
     this._colorMixed = false;
     this._targetCakeLayers = [];
     this._bottleDrag = null;
+    this._colorRunId += 1;
+    this._applyRenderFrame = 0;
     this._destroyBottleGhost();
     App.state.creamColor = App.state.creamColor || CONFIG.creamColors[0];
     App.saveState();
@@ -131,17 +143,16 @@ const CreamMakingModule = {
   },
 
   _resizeCanvas() {
-    const rect = this.area.getBoundingClientRect();
-    this.canvas.width = Math.max(320, Math.round(rect.width * 2));
-    this.canvas.height = Math.max(240, Math.round(rect.height * 2));
+    Utils.resizeCanvasToDisplaySize(this.canvas, { minWidth: 320, minHeight: 240 });
   },
 
   _resizeApplyCanvas() {
     const rect = this.applyPreview.getBoundingClientRect();
     const width = rect.width || 260;
     const height = rect.height || 180;
-    this.applyCanvas.width = Math.max(360, Math.round(width * 2));
-    this.applyCanvas.height = Math.max(220, Math.round(height * 2));
+    const dpr = Utils.getCanvasDpr();
+    this.applyCanvas.width = Math.max(360, Math.round(width * dpr));
+    this.applyCanvas.height = Math.max(220, Math.round(height * dpr));
   },
 
   _rememberHomePositions() {
@@ -182,13 +193,18 @@ const CreamMakingModule = {
     }
   },
 
-  async _loadTargetCakeLayers(color) {
-    this._targetCakeLayers = await Utils.loadCakeLayers(App.state.cakeType || 'single', {
+  async _loadTargetCakeLayers(color, runId = this._colorRunId) {
+    const layers = await Utils.loadCakeLayers(App.state.cakeType || 'single', {
       creamColor: color || App.state.creamColor || CONFIG.creamColors[0],
     });
+    if (runId !== this._colorRunId) {
+      return false;
+    }
+    this._targetCakeLayers = layers;
     if (this.applyCanvas) {
       this._applyTargetLayout = Utils.getCakeLayout(this.applyCanvas, this._targetCakeLayers);
     }
+    return true;
   },
 
   _setupBottlePicker() {
@@ -224,20 +240,12 @@ const CreamMakingModule = {
           Utils.showToast('先把鸡蛋打进碗里哦～', 1200);
           return;
         }
-        if (this.step === 'drop-color') {
-          return;
-        }
-        if (this.step !== 'color') {
+        if (!['color', 'drop-color', 'color-ready'].includes(this.step)) {
           Utils.showToast('这一阶段不用再倒色素啦～', 1200);
           return;
         }
 
-        this.picker.querySelectorAll('.bottle-option').forEach((item) => item.classList.remove('active'));
-        option.classList.add('active');
-        App.state.creamColor = color;
-        App.saveState();
-        await this._loadTargetCakeLayers(color);
-        this._playColorDrop(color);
+        this._selectCreamColor(color, option);
       };
 
       option.addEventListener('click', tapSelect);
@@ -258,10 +266,7 @@ const CreamMakingModule = {
         Utils.showToast('先把鸡蛋打进碗里哦～', 1200);
         return;
       }
-      if (this.step === 'drop-color') {
-        return;
-      }
-      if (this.step !== 'color') {
+      if (!['color', 'drop-color', 'color-ready'].includes(this.step)) {
         Utils.showToast('这一阶段不用再倒色素啦～', 1200);
         return;
       }
@@ -291,16 +296,11 @@ const CreamMakingModule = {
       this._bottleDrag = null;
 
       const point = this._getAreaPoint(event);
-      if (this.step !== 'color' || !this._isPointInBowl(point)) {
+      if (!['color', 'drop-color', 'color-ready'].includes(this.step) || !this._isPointInBowl(point)) {
         return;
       }
 
-      this.picker.querySelectorAll('.bottle-option').forEach((item) => item.classList.remove('active'));
-      activeOption.classList.add('active');
-      App.state.creamColor = activeColor;
-      App.saveState();
-      await this._loadTargetCakeLayers(activeColor);
-      this._playColorDrop(activeColor);
+      this._selectCreamColor(activeColor, activeOption);
     };
 
     if (usePointer) {
@@ -357,6 +357,22 @@ const CreamMakingModule = {
 
   _setBottlePickerEnabled(enabled) {
     this.picker.classList.toggle('is-disabled', !enabled);
+  },
+
+  _selectCreamColor(color, option) {
+    if (this._animationFrame) {
+      cancelAnimationFrame(this._animationFrame);
+      this._animationFrame = null;
+    }
+    const runId = this._colorRunId + 1;
+    this._colorRunId = runId;
+    this.picker.querySelectorAll('.bottle-option').forEach((item) => item.classList.remove('active'));
+    option.classList.add('active');
+    App.state.creamColor = color;
+    App.saveState();
+    this.step = 'color';
+    this._hideNextButton();
+    this._playColorDrop(color, runId);
   },
 
   _showNextButton(text, onClick) {
@@ -601,8 +617,7 @@ const CreamMakingModule = {
 
       this._paintCoverage(this._lastSpatulaPoint || canvasPoint, canvasPoint);
       this._lastSpatulaPoint = canvasPoint;
-      this._renderApplyPreview();
-      this._refreshCoverageProgress();
+      this._scheduleApplyUpdate();
     };
 
     const end = () => {
@@ -686,12 +701,13 @@ const CreamMakingModule = {
     animate();
   },
 
-  _playColorDrop(color) {
+  _playColorDrop(color, runId = this._colorRunId + 1) {
     if (this.step !== 'color') {
       return;
     }
 
-    const targetLayersPromise = this._loadTargetCakeLayers(color);
+    this._colorRunId = runId;
+    const targetLayersPromise = this._loadTargetCakeLayers(color, runId);
     this.step = 'drop-color';
     this._setStageLayout('drop-color');
     this._totalAngle = 0;
@@ -704,6 +720,9 @@ const CreamMakingModule = {
     let progress = 0;
     const bowl = this._getBowlMetrics();
     const animate = () => {
+      if (runId !== this._colorRunId) {
+        return;
+      }
       progress += 0.018;
       this._clearCanvas();
 
@@ -729,8 +748,10 @@ const CreamMakingModule = {
         this._clearCanvas();
         this._colorMixed = true;
         this._renderLiquid(color, 1);
-        targetLayersPromise.then(() => {
-          this._onColorDone();
+        targetLayersPromise.then((applied) => {
+          if (applied !== false && runId === this._colorRunId) {
+            this._onColorDone();
+          }
         });
       }
     };
@@ -800,7 +821,8 @@ const CreamMakingModule = {
         return;
       }
 
-      this.liquid.style.background = 'radial-gradient(circle at 50% 42%, rgba(255,223,120,0.98), rgba(255,191,92,0.96) 58%, rgba(242,155,70,0.92) 100%)';
+      const yolkUrl = Utils.loadImageUrl(CONFIG.bowlEggSrc);
+      this.liquid.style.background = `url("${yolkUrl}") center 44% / 42% auto no-repeat, radial-gradient(circle at 50% 42%, rgba(255,223,120,0.46), rgba(255,191,92,0.34) 58%, rgba(242,155,70,0.22) 100%)`;
       this.liquid.style.opacity = '0.92';
       this.liquid.style.boxShadow = 'inset 0 12px 20px rgba(255,245,214,0.28)';
       this.liquid.style.transform = 'scale(0.98)';
@@ -830,6 +852,17 @@ const CreamMakingModule = {
       Utils.drawCakeLayers(layerCtx, this._applyTargetLayout || this._applyLayout);
       layerCtx.globalCompositeOperation = 'destination-in';
       layerCtx.drawImage(this._coverageCanvas, 0, 0);
+    });
+  },
+
+  _scheduleApplyUpdate() {
+    if (this._applyRenderFrame) {
+      return;
+    }
+    this._applyRenderFrame = requestAnimationFrame(() => {
+      this._applyRenderFrame = 0;
+      this._renderApplyPreview();
+      this._refreshCoverageProgress();
     });
   },
 
@@ -877,7 +910,7 @@ const CreamMakingModule = {
     this.applyStage.classList.toggle('hidden', !coatStage);
     this.picker.classList.toggle('hidden', mode === 'coat' || mode === 'ready');
     this.progressWrap.classList.toggle('cream-progress--hidden', mode !== 'whip');
-    this._setBottlePickerEnabled(mode === 'color');
+    this._setBottlePickerEnabled(mode === 'color' || mode === 'drop-color' || mode === 'color-ready');
   },
 
   _getAreaPoint(event) {
@@ -978,19 +1011,32 @@ const CreamMakingModule = {
   },
 
   _paintCoverage(fromPoint, toPoint) {
+    const width = Math.max(28, this.applyCanvas.width * 0.082);
     this._coverageCtx.save();
     this._coverageCtx.strokeStyle = 'rgba(255,255,255,0.95)';
     this._coverageCtx.lineCap = 'round';
     this._coverageCtx.lineJoin = 'round';
-    this._coverageCtx.lineWidth = Math.max(24, this.applyCanvas.width * 0.075);
+    this._coverageCtx.shadowColor = 'rgba(255,255,255,0.55)';
+    this._coverageCtx.shadowBlur = width * 0.22;
+    this._coverageCtx.lineWidth = width;
     this._coverageCtx.beginPath();
     this._coverageCtx.moveTo(fromPoint.x, fromPoint.y);
     this._coverageCtx.lineTo(toPoint.x, toPoint.y);
     this._coverageCtx.stroke();
-    this._coverageCtx.beginPath();
-    this._coverageCtx.arc(toPoint.x, toPoint.y, Math.max(10, this.applyCanvas.width * 0.028), 0, Math.PI * 2);
-    this._coverageCtx.fillStyle = 'rgba(255,255,255,0.88)';
-    this._coverageCtx.fill();
+    for (let index = 0; index < 4; index += 1) {
+      const noise = Utils.seededNoise(Date.now() % 100000, index);
+      const radius = width * (0.25 + Math.abs(noise) * 0.12);
+      this._coverageCtx.beginPath();
+      this._coverageCtx.arc(
+        toPoint.x + noise * width * 0.16,
+        toPoint.y + Utils.seededNoise(index + 4, Date.now() % 1000) * width * 0.12,
+        radius,
+        0,
+        Math.PI * 2,
+      );
+      this._coverageCtx.fillStyle = 'rgba(255,255,255,0.82)';
+      this._coverageCtx.fill();
+    }
     this._coverageCtx.restore();
   },
 
@@ -1090,6 +1136,8 @@ const CreamMakingModule = {
       cancelAnimationFrame(this._animationFrame);
       this._animationFrame = null;
     }
+    cancelAnimationFrame(this._applyRenderFrame);
+    this._applyRenderFrame = 0;
     this._hideNextButton();
     this._destroyBottleGhost();
     this._cleanupFns.forEach((cleanup) => cleanup());

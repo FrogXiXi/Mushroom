@@ -1,6 +1,6 @@
 /**
  * 模块8: 切蛋糕互动
- * 使用真实透明蒙版按切线分离蛋糕块，并支持把切下来的蛋糕装盘
+ * 固定 8 等分模型：从完整 DIY 蛋糕画布裁出 8 片，避免自由切线生成随机碎片。
  */
 const CakeCutModule = {
   _pieces: [],
@@ -11,10 +11,12 @@ const CakeCutModule = {
   _cakeLayers: [],
   _decorationImages: new Map(),
   _creamStampImages: new Map(),
+  _layout: null,
   _dragIdx: -1,
   _dragStart: null,
   _origOffset: null,
   _plateActive: false,
+  _drawFrame: 0,
   _cleanupFns: [],
 
   async init() {
@@ -37,7 +39,9 @@ const CakeCutModule = {
     this._updatePlateState();
     this._draw();
 
-    this.hintEl.textContent = '拖动蛋糕刀，在蛋糕上画出切线';
+    this.hintEl.textContent = this._pieces.length > 1
+      ? '已恢复 8 等分蛋糕，可以把蛋糕拖到盘子里'
+      : '拖动蛋糕刀，在蛋糕上画一刀切成固定 8 等分';
     this.knifeEl.classList.add('active');
   },
 
@@ -56,9 +60,7 @@ const CakeCutModule = {
   },
 
   _resizeCanvas(canvas) {
-    const rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = Math.max(360, Math.round(rect.width * 2));
-    canvas.height = Math.max(420, Math.round(rect.height * 2));
+    Utils.resizeCanvasToDisplaySize(canvas, { minWidth: 340, minHeight: 420 });
   },
 
   _buildSceneCanvas() {
@@ -67,14 +69,14 @@ const CakeCutModule = {
     this._sceneCanvas.height = this.canvas.height;
 
     const sceneCtx = this._sceneCanvas.getContext('2d');
-    const layout = Utils.getCakeLayout(this._sceneCanvas, this._cakeLayers);
-    this._fullMaskCanvas = Utils.createMaskCanvas(this._sceneCanvas.width, this._sceneCanvas.height, layout, {
+    this._layout = Utils.getCakeLayout(this._sceneCanvas, this._cakeLayers);
+    this._fullMaskCanvas = Utils.createMaskCanvas(this._sceneCanvas.width, this._sceneCanvas.height, this._layout, {
       decorations: App.state.decorations || [],
       decorationImages: this._decorationImages,
     });
 
     Utils.drawCakeArtwork(sceneCtx, {
-      layout,
+      layout: this._layout,
       maskCanvas: this._fullMaskCanvas,
       creamColor: App.state.creamColor || CONFIG.creamColors[0],
       strokes: App.state.paintStrokes || [],
@@ -93,20 +95,35 @@ const CakeCutModule = {
   },
 
   _initPieces() {
-    this._pieces = [this._createPiece(this._sceneCanvas, this._fullMaskCanvas, 0, 0)];
-  },
+    const savedSlices = Array.isArray(App.state.cutSlices) ? App.state.cutSlices : [];
+    if (savedSlices.length > 0) {
+      this._splitIntoFixedSlices(savedSlices);
+      this._activatePlateStage();
+      return;
+    }
 
-  _createPiece(sourceCanvas, maskCanvas, offsetX, offsetY) {
-    const artCanvas = this._maskSourceCanvas(sourceCanvas, maskCanvas);
-    return {
-      id: `piece_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
-      canvas: artCanvas,
-      maskCanvas: this._cloneCanvas(maskCanvas),
-      bounds: this._getCanvasBounds(maskCanvas),
-      offsetX,
-      offsetY,
+    this._pieces = [this._createPiece(this._fullMaskCanvas, 0, 0, {
+      id: 'whole_cake',
+      sliceIndex: -1,
       plated: false,
       plateSlot: -1,
+    })];
+  },
+
+  _createPiece(maskCanvas, offsetX, offsetY, meta = {}) {
+    const bounds = this._getCanvasBounds(maskCanvas);
+    const artCanvas = this._maskSourceCanvas(this._sceneCanvas, maskCanvas, bounds);
+    return {
+      id: meta.id || `slice_${meta.sliceIndex ?? Date.now()}`,
+      sliceIndex: typeof meta.sliceIndex === 'number' ? meta.sliceIndex : -1,
+      canvas: artCanvas,
+      maskCanvas: this._cloneCanvas(maskCanvas),
+      bounds,
+      offsetX,
+      offsetY,
+      plated: !!meta.plated,
+      plateSlot: typeof meta.plateSlot === 'number' ? meta.plateSlot : -1,
+      faceSrc: meta.faceSrc || null,
     };
   },
 
@@ -118,14 +135,16 @@ const CakeCutModule = {
     return canvas;
   },
 
-  _maskSourceCanvas(sourceCanvas, maskCanvas) {
+  _maskSourceCanvas(sourceCanvas, maskCanvas, bounds) {
+    const width = Math.max(1, bounds.width);
+    const height = Math.max(1, bounds.height);
     const canvas = document.createElement('canvas');
-    canvas.width = sourceCanvas.width;
-    canvas.height = sourceCanvas.height;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(sourceCanvas, 0, 0);
+    ctx.drawImage(sourceCanvas, bounds.x, bounds.y, width, height, 0, 0, width, height);
     ctx.globalCompositeOperation = 'destination-in';
-    ctx.drawImage(maskCanvas, 0, 0);
+    ctx.drawImage(maskCanvas, bounds.x, bounds.y, width, height, 0, 0, width, height);
     return canvas;
   },
 
@@ -133,13 +152,13 @@ const CakeCutModule = {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     this._pieces.forEach((piece) => {
-      this.ctx.drawImage(piece.canvas, piece.offsetX, piece.offsetY);
+      this.ctx.drawImage(piece.canvas, piece.bounds.x + piece.offsetX, piece.bounds.y + piece.offsetY);
     });
 
     if (this._cutLine.length > 1) {
       this.ctx.beginPath();
       this.ctx.strokeStyle = 'rgba(60,40,20,0.72)';
-      this.ctx.lineWidth = 4;
+      this.ctx.lineWidth = Math.max(3, this.canvas.width * 0.006);
       this.ctx.setLineDash([10, 6]);
       this.ctx.moveTo(this._cutLine[0].x, this._cutLine[0].y);
       for (let index = 1; index < this._cutLine.length; index += 1) {
@@ -148,6 +167,16 @@ const CakeCutModule = {
       this.ctx.stroke();
       this.ctx.setLineDash([]);
     }
+  },
+
+  _requestDraw() {
+    if (this._drawFrame) {
+      return;
+    }
+    this._drawFrame = requestAnimationFrame(() => {
+      this._drawFrame = 0;
+      this._draw();
+    });
   },
 
   _bindKnifeEvents() {
@@ -162,7 +191,7 @@ const CakeCutModule = {
       if (point) {
         this._cutLine.push(point);
       }
-      this._draw();
+      this._requestDraw();
     };
 
     const move = (event) => {
@@ -176,7 +205,7 @@ const CakeCutModule = {
         return;
       }
       this._cutLine.push(point);
-      this._draw();
+      this._requestDraw();
     };
 
     const end = () => {
@@ -195,6 +224,7 @@ const CakeCutModule = {
     document.addEventListener('touchmove', move, { passive: false });
     document.addEventListener('mouseup', end);
     document.addEventListener('touchend', end);
+    document.addEventListener('touchcancel', end);
 
     this._cleanupFns.push(() => {
       this.knifeEl.removeEventListener('mousedown', start);
@@ -203,12 +233,13 @@ const CakeCutModule = {
       document.removeEventListener('touchmove', move);
       document.removeEventListener('mouseup', end);
       document.removeEventListener('touchend', end);
+      document.removeEventListener('touchcancel', end);
     });
   },
 
   _bindPieceDragEvents() {
     const start = (event) => {
-      if (this._knifeDragging) {
+      if (this._knifeDragging || this._pieces.length <= 1) {
         return;
       }
 
@@ -243,7 +274,7 @@ const CakeCutModule = {
       piece.offsetX = this._origOffset.x + (point.x - this._dragStart.x);
       piece.offsetY = this._origOffset.y + (point.y - this._dragStart.y);
       this._clampPieceOffset(piece);
-      this._draw();
+      this._requestDraw();
     };
 
     const end = () => {
@@ -256,7 +287,8 @@ const CakeCutModule = {
       this._dragIdx = -1;
       this._dragStart = null;
       this._origOffset = null;
-      this._draw();
+      this._syncState();
+      this._requestDraw();
     };
 
     this.canvas.addEventListener('mousedown', start);
@@ -265,6 +297,7 @@ const CakeCutModule = {
     document.addEventListener('touchmove', move, { passive: false });
     document.addEventListener('mouseup', end);
     document.addEventListener('touchend', end);
+    document.addEventListener('touchcancel', end);
 
     this._cleanupFns.push(() => {
       this.canvas.removeEventListener('mousedown', start);
@@ -273,6 +306,7 @@ const CakeCutModule = {
       document.removeEventListener('touchmove', move);
       document.removeEventListener('mouseup', end);
       document.removeEventListener('touchend', end);
+      document.removeEventListener('touchcancel', end);
     });
   },
 
@@ -282,9 +316,10 @@ const CakeCutModule = {
         Utils.showToast('先把切好的蛋糕拖到盘子里吧～', 1800);
         return;
       }
+      this._syncState();
       setTimeout(() => {
         App.goTo('mod-ending');
-      }, 900);
+      }, 500);
     };
 
     this._cleanupFns.push(() => {
@@ -325,110 +360,45 @@ const CakeCutModule = {
     return Utils.getCanvasPos(this.canvas, event);
   },
 
-  _hitTestPiece(point) {
-    for (let index = this._pieces.length - 1; index >= 0; index -= 1) {
-      if (this._pointInPiece(this._pieces[index], point)) {
-        return index;
-      }
-    }
-    return -1;
-  },
-
-  _pointInPiece(piece, point) {
-    const x = Math.round(point.x - piece.offsetX);
-    const y = Math.round(point.y - piece.offsetY);
-    return this._pointInMaskCanvas(piece.maskCanvas, x, y);
-  },
-
-  _pointInMaskCanvas(maskCanvas, x, y) {
-    if (x < 0 || y < 0 || x >= maskCanvas.width || y >= maskCanvas.height) {
-      return false;
-    }
-    const alpha = maskCanvas.getContext('2d').getImageData(x, y, 1, 1).data[3];
-    return alpha > 10;
-  },
-
   _finalizeCut() {
     if (this._cutLine.length < (CONFIG.cutLineMinPoints || 3)) {
       this._cutLine = [];
-      this._draw();
+      this._requestDraw();
       return;
     }
 
-    if (this._pieces.length >= CONFIG.maxCutPieces) {
-      Utils.showToast('已经切得足够碎啦，好好享用吧～', 2000);
+    if (this._pieces.length > 1) {
+      this.hintEl.textContent = '蛋糕已按固定 8 等分切好，可以拖动任意一片装盘';
       this._cutLine = [];
-      this._draw();
+      this._requestDraw();
       return;
     }
 
-    const targetIdx = this._findTargetPieceIndex();
-    if (targetIdx < 0) {
+    if (!this._cutLineHitsCake()) {
       this.hintEl.textContent = '这刀没有落在蛋糕上，换个位置再试试';
       this._cutLine = [];
-      this._draw();
+      this._requestDraw();
       return;
     }
 
-    const piece = this._pieces[targetIdx];
-    const localLine = this._cutLine.map((point) => ({
-      x: point.x - piece.offsetX,
-      y: point.y - piece.offsetY,
-    }));
-
-    // 不再强制要求两端在蛋糕外面 — 改为只检查切线是否穿过蛋糕
-    // 如果切线两端都在蛋糕内部且距离太短，提示用户
-    const localStart = localLine[0];
-    const localEnd = localLine[localLine.length - 1];
-    const startInside = this._pointInMaskCanvas(piece.maskCanvas, localStart.x, localStart.y);
-    const endInside = this._pointInMaskCanvas(piece.maskCanvas, localEnd.x, localEnd.y);
-    if (startInside && endInside) {
-      const dist = Utils.distance(localStart.x, localStart.y, localEnd.x, localEnd.y);
-      if (dist < this.canvas.width * 0.06) {
-        this.hintEl.textContent = '切线太短了，试着画得更长一些';
-        this._cutLine = [];
-        this._draw();
-        return;
-      }
-    }
-
-    const splitPieces = this._splitPiece(piece, this._cutLine);
     this._cutLine = [];
-
-    if (!splitPieces || splitPieces.length < 2) {
-      this.hintEl.textContent = '这一刀没有把蛋糕切开，试着让切线更完整一点';
-      this._draw();
-      return;
-    }
-
-    const remainingCapacity = CONFIG.maxCutPieces - (this._pieces.length - 1);
-    const limitedPieces = splitPieces.slice(0, Math.max(2, remainingCapacity));
-    this._pieces.splice(targetIdx, 1, ...limitedPieces);
+    this._splitIntoFixedSlices();
     this._activatePlateStage();
     this._updatePlateState();
-    this.hintEl.textContent = '继续切，或者把切好的蛋糕拖到盘子里';
-    this._draw();
+    this._syncState();
+    this.hintEl.textContent = '已经切成固定 8 等分，拖一片到盘子里吧';
+    this._requestDraw();
   },
 
-  _findTargetPieceIndex() {
+  _cutLineHitsCake() {
     const samples = this._getCutLineSamples();
-    let bestIdx = -1;
-    let bestHits = 0;
-    for (let index = this._pieces.length - 1; index >= 0; index -= 1) {
-      let hits = 0;
-      for (const sample of samples) {
-        if (this._pointInPiece(this._pieces[index], sample)) {
-          hits += 1;
-        }
-      }
-
-      if (hits > bestHits) {
-        bestHits = hits;
-        bestIdx = index;
+    let hits = 0;
+    for (const sample of samples) {
+      if (this._pointInMaskCanvas(this._fullMaskCanvas, sample.x, sample.y)) {
+        hits += 1;
       }
     }
-
-    return bestHits > 0 ? bestIdx : -1;
+    return hits >= Math.max(2, Math.ceil(samples.length * 0.08));
   },
 
   _getCutLineSamples() {
@@ -441,7 +411,7 @@ const CakeCutModule = {
       const start = this._cutLine[index];
       const end = this._cutLine[index + 1];
       const distance = Utils.distance(start.x, start.y, end.x, end.y);
-      const steps = Math.max(1, Math.ceil(distance / 12));
+      const steps = Math.max(1, Math.ceil(distance / 14));
 
       for (let step = 0; step <= steps; step += 1) {
         const progress = step / steps;
@@ -458,154 +428,91 @@ const CakeCutModule = {
     return samples;
   },
 
-  _splitPiece(piece, globalLine) {
-    const localLine = globalLine.map((point) => ({
-      x: point.x - piece.offsetX,
-      y: point.y - piece.offsetY,
-    }));
+  _splitIntoFixedSlices(savedSlices = []) {
+    const savedByIndex = new Map(savedSlices.map((slice) => [slice.index, slice]));
+    const count = CONFIG.cutSliceCount || 8;
+    const frame = this._layout.frame;
+    const separation = Math.max(8, frame.width * (CONFIG.cutSliceSeparation || 0.018));
 
-    const cutMask = this._cloneCanvas(piece.maskCanvas);
-    const cutCtx = cutMask.getContext('2d');
-    cutCtx.save();
-    cutCtx.globalCompositeOperation = 'destination-out';
-    cutCtx.strokeStyle = '#000';
-    cutCtx.lineCap = 'round';
-    cutCtx.lineJoin = 'round';
-    cutCtx.lineWidth = Math.max(18, this.canvas.width * (CONFIG.cutLineWidth || 0.032));
-    cutCtx.beginPath();
-    cutCtx.moveTo(localLine[0].x, localLine[0].y);
-    for (let index = 1; index < localLine.length; index += 1) {
-      cutCtx.lineTo(localLine[index].x, localLine[index].y);
+    this._pieces = [];
+    for (let index = 0; index < count; index += 1) {
+      const angle = this._getSliceMidAngle(index, count);
+      const saved = savedByIndex.get(index) || {};
+      const defaultOffsetX = Math.cos(angle) * separation;
+      const defaultOffsetY = Math.sin(angle) * separation;
+      const offsetX = typeof saved.offsetX === 'number'
+        ? saved.offsetX
+        : typeof saved.ox === 'number'
+          ? saved.ox * this.canvas.width
+          : defaultOffsetX;
+      const offsetY = typeof saved.offsetY === 'number'
+        ? saved.offsetY
+        : typeof saved.oy === 'number'
+          ? saved.oy * this.canvas.height
+          : defaultOffsetY;
+      const piece = this._createPiece(this._createSliceMask(index, count), offsetX, offsetY, {
+        id: `slice_${index}`,
+        sliceIndex: index,
+        plated: saved.plated,
+        plateSlot: saved.plateSlot,
+        faceSrc: CONFIG.cutSliceFaceSrcs?.[index] || null,
+      });
+      this._clampPieceOffset(piece);
+      this._pieces.push(piece);
     }
-    cutCtx.stroke();
-    cutCtx.restore();
-
-    const components = this._extractMaskComponents(cutMask).filter((component) => component.area > 180);
-    if (components.length < 2) {
-      return null;
-    }
-
-    const start = globalLine[0];
-    const end = globalLine[globalLine.length - 1];
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const length = Math.hypot(dx, dy) || 1;
-    const normal = { x: -dy / length, y: dx / length };
-    const separation = Math.max(10, this.canvas.width * 0.016);
-
-    return components.map((component) => {
-      const globalCentroid = {
-        x: component.centroid.x + piece.offsetX,
-        y: component.centroid.y + piece.offsetY,
-      };
-      const side = Math.sign(dx * (globalCentroid.y - start.y) - dy * (globalCentroid.x - start.x)) || 1;
-      const nextPiece = {
-        id: `piece_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
-        canvas: this._maskSourceCanvas(piece.canvas, component.maskCanvas),
-        maskCanvas: component.maskCanvas,
-        bounds: component.bounds,
-        offsetX: piece.offsetX + normal.x * separation * side,
-        offsetY: piece.offsetY + normal.y * separation * side,
-        plated: false,
-        plateSlot: -1,
-      };
-      this._clampPieceOffset(nextPiece);
-      return nextPiece;
-    });
   },
 
-  _extractMaskComponents(maskCanvas) {
-    const width = maskCanvas.width;
-    const height = maskCanvas.height;
-    const sourceCtx = maskCanvas.getContext('2d');
-    const imageData = sourceCtx.getImageData(0, 0, width, height).data;
-    const visited = new Uint8Array(width * height);
-    const components = [];
+  _getSliceMidAngle(index, count = CONFIG.cutSliceCount || 8) {
+    const startAngle = -Math.PI / 2 + (index * Math.PI * 2) / count;
+    return startAngle + Math.PI / count;
+  },
 
-    const enqueueNeighbors = (x, y, queue) => {
-      for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
-        for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
-          if (offsetX === 0 && offsetY === 0) {
-            continue;
-          }
-          const nextX = x + offsetX;
-          const nextY = y + offsetY;
-          if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height) {
-            continue;
-          }
-          const nextIndex = nextY * width + nextX;
-          if (visited[nextIndex]) {
-            continue;
-          }
-          if (imageData[nextIndex * 4 + 3] <= 10) {
-            continue;
-          }
-          visited[nextIndex] = 1;
-          queue.push(nextIndex);
-        }
+  _createSliceMask(index, count = CONFIG.cutSliceCount || 8) {
+    const canvas = document.createElement('canvas');
+    canvas.width = this._fullMaskCanvas.width;
+    canvas.height = this._fullMaskCanvas.height;
+    const ctx = canvas.getContext('2d');
+    const frame = this._layout.frame;
+    const centerX = frame.x + frame.width * 0.5;
+    const centerY = frame.y + frame.height * 0.5;
+    const radius = Math.hypot(frame.width, frame.height) * 0.72;
+    const startAngle = -Math.PI / 2 + (index * Math.PI * 2) / count;
+    const endAngle = -Math.PI / 2 + ((index + 1) * Math.PI * 2) / count;
+
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(this._fullMaskCanvas, 0, 0);
+    return canvas;
+  },
+
+  _hitTestPiece(point) {
+    for (let index = this._pieces.length - 1; index >= 0; index -= 1) {
+      if (this._pointInPiece(this._pieces[index], point)) {
+        return index;
       }
-    };
-
-    for (let index = 0; index < width * height; index += 1) {
-      if (visited[index] || imageData[index * 4 + 3] <= 10) {
-        continue;
-      }
-
-      const queue = [index];
-      const pixels = [];
-      visited[index] = 1;
-      let minX = width;
-      let minY = height;
-      let maxX = 0;
-      let maxY = 0;
-      let sumX = 0;
-      let sumY = 0;
-
-      while (queue.length > 0) {
-        const current = queue.pop();
-        const x = current % width;
-        const y = (current - x) / width;
-        pixels.push(current);
-        sumX += x;
-        sumY += y;
-        if (x < minX) minX = x;
-        if (y < minY) minY = y;
-        if (x > maxX) maxX = x;
-        if (y > maxY) maxY = y;
-        enqueueNeighbors(x, y, queue);
-      }
-
-      if (pixels.length <= 120) {
-        continue;
-      }
-
-      const componentCanvas = document.createElement('canvas');
-      componentCanvas.width = width;
-      componentCanvas.height = height;
-      const componentCtx = componentCanvas.getContext('2d');
-      const componentImage = componentCtx.createImageData(width, height);
-      pixels.forEach((pixelIndex) => {
-        componentImage.data[pixelIndex * 4 + 3] = 255;
-      });
-      componentCtx.putImageData(componentImage, 0, 0);
-
-      components.push({
-        maskCanvas: componentCanvas,
-        area: pixels.length,
-        centroid: {
-          x: sumX / pixels.length,
-          y: sumY / pixels.length,
-        },
-        bounds: {
-          x: minX,
-          y: minY,
-          width: maxX - minX + 1,
-          height: maxY - minY + 1,
-        },
-      });
     }
+    return -1;
+  },
 
-    return components.sort((left, right) => right.area - left.area);
+  _pointInPiece(piece, point) {
+    const x = Math.round(point.x - piece.offsetX);
+    const y = Math.round(point.y - piece.offsetY);
+    return this._pointInMaskCanvas(piece.maskCanvas, x, y);
+  },
+
+  _pointInMaskCanvas(maskCanvas, x, y) {
+    const safeX = Math.round(x);
+    const safeY = Math.round(y);
+    if (safeX < 0 || safeY < 0 || safeX >= maskCanvas.width || safeY >= maskCanvas.height) {
+      return false;
+    }
+    const alpha = maskCanvas.getContext('2d').getImageData(safeX, safeY, 1, 1).data[3];
+    return alpha > 10;
   },
 
   _getCanvasBounds(maskCanvas) {
@@ -631,7 +538,7 @@ const CakeCutModule = {
     }
 
     if (!found) {
-      return { x: 0, y: 0, width: 0, height: 0 };
+      return { x: 0, y: 0, width: 1, height: 1 };
     }
 
     return {
@@ -743,11 +650,29 @@ const CakeCutModule = {
 
     this.plateZone.classList.remove('hidden');
     if (platedCount > 0) {
-      this.hintEl.textContent = '已经装盘啦，可以继续切，也可以完成流程';
+      this.hintEl.textContent = '已经装盘啦，可以继续拖其它蛋糕片，也可以完成流程';
     }
   },
 
+  _syncState() {
+    if (this._pieces.length <= 1) {
+      App.state.cutSlices = [];
+    } else {
+      App.state.cutSlices = this._pieces.map((piece) => ({
+        index: piece.sliceIndex,
+        ox: piece.offsetX / this.canvas.width,
+        oy: piece.offsetY / this.canvas.height,
+        plated: !!piece.plated,
+        plateSlot: piece.plateSlot,
+      }));
+    }
+    App.saveState();
+  },
+
   destroy() {
+    this._syncState();
+    cancelAnimationFrame(this._drawFrame);
+    this._drawFrame = 0;
     this._pieces = [];
     this._cutLine = [];
     this._knifeDragging = false;

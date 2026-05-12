@@ -2,12 +2,86 @@
  * 工具函数
  */
 const Utils = {
+  _imageCache: new Map(),
+  _maskScratch: null,
+
   /**
-   * 加载图片，支持 WebP 优先 + PNG 回退
-   * @param {string} relPath - 相对于 imgBase 的路径（不含后缀）
+   * 加载图片，支持缓存、候选路径与扩展名优先级。
+   * @param {string|object|Array} input - 路径基名、{src, extPriority}，或候选项数组
    * @returns {Promise<HTMLImageElement>}
    */
-  loadImage(relPath) {
+  loadImage(input, options = {}) {
+    if (Array.isArray(input)) {
+      return input.reduce((chain, candidate) => (
+        chain.catch(() => Utils.loadImage(candidate, options))
+      ), Promise.reject(new Error('No image candidates')));
+    }
+
+    const descriptor = typeof input === 'string'
+      ? { src: input }
+      : { ...(input || {}) };
+    const relPath = descriptor.src || descriptor.relPath;
+    const extPriority = descriptor.extPriority || options.extPriority || ['webp', 'png'];
+    const cacheKey = `${relPath}|${extPriority.join(',')}`;
+
+    if (Utils._imageCache.has(cacheKey)) {
+      return Utils._imageCache.get(cacheKey);
+    }
+
+    const loadPromise = new Promise((resolve, reject) => {
+      if (!relPath) {
+        reject(new Error('Missing image path'));
+        return;
+      }
+
+      const tryAt = (index) => {
+        if (index >= extPriority.length) {
+          reject(new Error('Failed to load: ' + relPath));
+          return;
+        }
+
+        const ext = extPriority[index].replace(/^\./, '');
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => tryAt(index + 1);
+        img.src = `${CONFIG.imgBase}${relPath}.${ext}`;
+      };
+
+      tryAt(0);
+    }).catch((error) => {
+      Utils._imageCache.delete(cacheKey);
+      throw error;
+    });
+
+    Utils._imageCache.set(cacheKey, loadPromise);
+    return loadPromise;
+  },
+
+  loadImageUrl(input, options = {}) {
+    const descriptor = typeof input === 'string'
+      ? { src: input }
+      : { ...(input || {}) };
+    const relPath = descriptor.src || descriptor.relPath;
+    const extPriority = descriptor.extPriority || options.extPriority || ['webp', 'png'];
+    const ext = extPriority[0].replace(/^\./, '');
+    return `${CONFIG.imgBase}${relPath}.${ext}`;
+  },
+
+  preloadImages(paths) {
+    const map = new Map();
+    const tasks = paths.map(async (entry) => {
+      const key = typeof entry === 'string' ? entry : entry.src || entry.relPath;
+      try {
+        const img = await Utils.loadImage(entry);
+        map.set(key, img);
+      } catch (e) {
+        console.warn('Image not found:', key);
+      }
+    });
+    return Promise.all(tasks).then(() => map);
+  },
+
+  loadImageLegacy(relPath) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const webpSrc = CONFIG.imgBase + relPath + '.webp';
@@ -25,25 +99,6 @@ const Utils = {
   },
 
   /**
-   * 预加载一组图片
-   * @param {string[]} paths
-   * @returns {Promise<Map<string, HTMLImageElement>>}
-   */
-  async preloadImages(paths) {
-    const map = new Map();
-    const tasks = paths.map(async (p) => {
-      try {
-        const img = await Utils.loadImage(p);
-        map.set(p, img);
-      } catch (e) {
-        console.warn('Image not found:', p);
-      }
-    });
-    await Promise.all(tasks);
-    return map;
-  },
-
-  /**
    * 计算两点之间的距离
    */
   distance(x1, y1, x2, y2) {
@@ -52,6 +107,36 @@ const Utils = {
 
   clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
+  },
+
+  isCoarsePointer() {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    const coarsePointer = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false;
+    const touchPoints = typeof navigator !== 'undefined'
+      ? navigator.maxTouchPoints || 0
+      : 0;
+    return coarsePointer || touchPoints > 0;
+  },
+
+  getCanvasDpr() {
+    const maxDpr = Utils.isCoarsePointer()
+      ? CONFIG.mobileCanvasDpr || 1.35
+      : CONFIG.desktopCanvasDpr || 2;
+    const deviceDpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    return Math.max(1, Math.min(maxDpr, deviceDpr));
+  },
+
+  resizeCanvasToDisplaySize(canvas, options = {}) {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = options.dpr || Utils.getCanvasDpr();
+    const minWidth = options.minWidth || 320;
+    const minHeight = options.minHeight || 240;
+    canvas.width = Math.max(minWidth, Math.round((rect.width || minWidth) * dpr));
+    canvas.height = Math.max(minHeight, Math.round((rect.height || minHeight) * dpr));
   },
 
   hexToRgba(hex, alpha = 1) {
@@ -282,10 +367,15 @@ const Utils = {
   },
 
   renderMaskedLayer(targetCtx, maskCanvas, renderer) {
-    const layerCanvas = document.createElement('canvas');
+    const layerCanvas = Utils._maskScratch || document.createElement('canvas');
+    Utils._maskScratch = layerCanvas;
     layerCanvas.width = maskCanvas.width;
     layerCanvas.height = maskCanvas.height;
     const layerCtx = layerCanvas.getContext('2d');
+    layerCtx.setTransform(1, 0, 0, 1, 0, 0);
+    layerCtx.globalAlpha = 1;
+    layerCtx.globalCompositeOperation = 'source-over';
+    layerCtx.clearRect(0, 0, layerCanvas.width, layerCanvas.height);
     renderer(layerCtx);
     layerCtx.globalCompositeOperation = 'destination-in';
     layerCtx.drawImage(maskCanvas, 0, 0);
@@ -357,7 +447,10 @@ const Utils = {
       : Utils.getCakeBasePath(cakeType);
 
     try {
-      return [await Utils.loadImage(targetPath)];
+      return [await Utils.loadImage({
+        src: targetPath,
+        extPriority: coated && creamColor?.extPriority ? creamColor.extPriority : undefined,
+      })];
     } catch (error) {
       if (!coated) {
         throw error;

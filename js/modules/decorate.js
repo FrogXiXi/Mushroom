@@ -22,8 +22,11 @@ const DecorateModule = {
 	_pinch: null,
 	_cleanupFns: [],
 	_creamStampImages: new Map(),
+	_assetImages: new Map(),
 	_selectedStampSrc: null,
 	_colorSliderCtrl: null,
+	_renderFrame: 0,
+	_isCoarsePointer: false,
 
 	async init() {
 		this.canvas = document.getElementById('decorate-canvas');
@@ -35,6 +38,8 @@ const DecorateModule = {
 		this.creamTools = document.getElementById('decorate-cream-tools');
 		this.tipEl = document.getElementById('decorate-tip');
 		this.selectionTools = document.getElementById('decorate-selection-tools');
+		this._isCoarsePointer = Utils.isCoarsePointer();
+		this._renderFrame = 0;
 		this.strokes = (App.state.paintStrokes || []).map((stroke) => ({
 			...stroke,
 			points: (stroke.points || []).map((point) => ({ ...point })),
@@ -48,6 +53,7 @@ const DecorateModule = {
 		await this._loadCakeLayers();
 		this._layout = Utils.getCakeLayout(this.canvas, this._cakeLayers);
 		this._maskCanvas = Utils.createMaskCanvas(this.canvas.width, this.canvas.height, this._layout);
+		await this._preloadDecorationImages();
 		await this._hydrateElements();
 		await this._loadCreamStampImages();
 		this._setupTabs();
@@ -60,20 +66,26 @@ const DecorateModule = {
 	},
 
 	_resizeCanvas() {
-		const rect = this.canvas.parentElement.getBoundingClientRect();
-		this.canvas.width = Math.max(360, Math.round(rect.width * 2));
-		this.canvas.height = Math.max(360, Math.round(rect.height * 2));
+		Utils.resizeCanvasToDisplaySize(this.canvas, { minWidth: 340, minHeight: 340 });
 	},
 
 	async _loadCakeLayers() {
 		this._cakeLayers = await Utils.loadCakeLayers(App.state.cakeType || 'single');
 	},
 
+	async _preloadDecorationImages() {
+		const configuredSrcs = Object.values(CONFIG.decorations)
+			.flatMap((items) => items.map((item) => item.src));
+		const stateSrcs = (App.state.decorations || []).map((item) => item.src).filter(Boolean);
+		this._assetImages = await Utils.preloadImages([...new Set([...configuredSrcs, ...stateSrcs])]);
+	},
+
 	async _hydrateElements() {
 		const items = App.state.decorations || [];
 		const results = await Promise.all(items.map(async (item) => {
 			try {
-				const image = await Utils.loadImage(item.src);
+				const image = this._assetImages.get(item.src) || await Utils.loadImage(item.src);
+				this._assetImages.set(item.src, image);
 				return {
 					...item,
 					nx: typeof item.nx === 'number' ? item.nx : 0.5 + (item.rx || 0) * 0.5,
@@ -122,7 +134,7 @@ const DecorateModule = {
 				this._updateSelectionTools();
 				this._updateTip();
 				this._renderItems();
-				this._render();
+				this._requestRender();
 			};
 		});
 		this.creamTools.classList.toggle('hidden', this.activeTab !== 'cream');
@@ -139,8 +151,10 @@ const DecorateModule = {
 		};
 		if (tips[this.activeTab]) {
 			this.tipEl.textContent = tips[this.activeTab];
+		} else if (this._isCoarsePointer) {
+			this.tipEl.textContent = '点一下素材会自动放到蛋糕中心；选中后可拖动细调，也可用下方按钮缩放、旋转或删除。';
 		} else {
-			this.tipEl.textContent = '按住下方素材直接拖到蛋糕上；手机端可先点选素材，再用下方按钮放大、缩小、旋转或删除。';
+			this.tipEl.textContent = '按住下方素材直接拖到蛋糕上；选中后可缩放、旋转或删除。';
 		}
 	},
 
@@ -238,22 +252,22 @@ const DecorateModule = {
 		document.getElementById('decorate-undo').onclick = () => {
 			this.strokes.pop();
 			this._syncState();
-			this._render();
+			this._requestRender();
 		};
 		document.getElementById('decorate-clear').onclick = () => {
 			this.strokes = [];
 			this._syncState();
-			this._render();
+			this._requestRender();
 		};
 		document.getElementById('decorate-cream-undo').onclick = () => {
 			this.creamStrokes.pop();
 			this._syncState();
-			this._render();
+			this._requestRender();
 		};
 		document.getElementById('decorate-cream-clear').onclick = () => {
 			this.creamStrokes = [];
 			this._syncState();
-			this._render();
+			this._requestRender();
 		};
 		document.getElementById('decorate-scale-down').onclick = () => this._nudgeSelectedElementScale(-0.018);
 		document.getElementById('decorate-scale-up').onclick = () => this._nudgeSelectedElementScale(0.018);
@@ -261,11 +275,12 @@ const DecorateModule = {
 		document.getElementById('decorate-rotate-right').onclick = () => this._nudgeSelectedElementRotation(0.12);
 		document.getElementById('decorate-delete-selected').onclick = () => this._deleteSelectedElement();
 		document.getElementById('decorate-done').onclick = () => {
+			this._syncState();
 			if (!this.elements.some((item) => item.isCandle)) {
 				Utils.showToast('请至少添加一根蜡烛哦～', 1800);
 				return;
 			}
-			this._syncState();
+			this._requestRender();
 			App.goTo('mod-screenshot');
 		};
 	},
@@ -282,8 +297,10 @@ const DecorateModule = {
 			const node = document.createElement('button');
 			node.type = 'button';
 			node.className = 'decorate-item';
-			node.innerHTML = `<img src="${CONFIG.imgBase + item.src}.webp" alt="${item.name}" draggable="false">`;
+			node.innerHTML = `<img src="${Utils.loadImageUrl(item.src)}" alt="${item.name}" draggable="false">`;
 			node.querySelector('img').onerror = function onItemError() {
+				if (this.dataset.fallbackApplied) return;
+				this.dataset.fallbackApplied = '1';
 				this.src = `${CONFIG.imgBase + item.src}.png`;
 			};
 			this._bindPaletteItem(node, item);
@@ -318,6 +335,18 @@ const DecorateModule = {
 	},
 
 	_bindPaletteItem(node, item) {
+		if (this._isCoarsePointer) {
+			const addFromTap = (event) => {
+				event.preventDefault();
+				this._addElementAt(item, this._getDefaultAddPoint(item));
+			};
+			node.addEventListener('click', addFromTap);
+			this._cleanupFns.push(() => {
+				node.removeEventListener('click', addFromTap);
+			});
+			return;
+		}
+
 		const start = (event) => {
 			event.preventDefault();
 			node.classList.add('drag-source');
@@ -370,8 +399,10 @@ const DecorateModule = {
 		this._destroyPaletteGhost();
 		const ghost = document.createElement('div');
 		ghost.className = 'palette-drag-ghost';
-		ghost.innerHTML = `<img src="${CONFIG.imgBase + item.src}.webp" alt="${item.name}">`;
+		ghost.innerHTML = `<img src="${Utils.loadImageUrl(item.src)}" alt="${item.name}">`;
 		ghost.querySelector('img').onerror = function onGhostError() {
+			if (this.dataset.fallbackApplied) return;
+			this.dataset.fallbackApplied = '1';
 			this.src = `${CONFIG.imgBase + item.src}.png`;
 		};
 		document.body.appendChild(ghost);
@@ -410,8 +441,19 @@ const DecorateModule = {
 		return Utils.getCanvasPos(this.canvas, source);
 	},
 
+	_getDefaultAddPoint(item) {
+		const frame = this._layout.frame;
+		const isTallCandle = !!item.isCandle || item.id.startsWith('slim_') || item.id.startsWith('num_');
+		const yRatio = isTallCandle ? 0.3 : 0.46;
+		return {
+			x: frame.x + frame.width * 0.5,
+			y: frame.y + frame.height * yRatio,
+		};
+	},
+
 	async _addElementAt(item, point) {
-		const image = await Utils.loadImage(item.src);
+		const image = this._assetImages.get(item.src) || await Utils.loadImage(item.src);
+		this._assetImages.set(item.src, image);
 		this.elements.push({
 			id: `${item.id}_${Date.now()}`,
 			src: item.src,
@@ -425,7 +467,7 @@ const DecorateModule = {
 		this._selectedIdx = this.elements.length - 1;
 		this._syncState();
 		this._updateSelectionTools();
-		this._render();
+		this._requestRender();
 	},
 
 	_getInitialElementScale(item) {
@@ -476,11 +518,11 @@ const DecorateModule = {
 						this._selectedIdx = -1;
 						this._syncState();
 						this._updateSelectionTools();
-						this._render();
+						this._requestRender();
 					}
 				}, 900);
 				this._updateSelectionTools();
-				this._render();
+				this._requestRender();
 				return;
 			}
 
@@ -489,7 +531,7 @@ const DecorateModule = {
 
 			const isDrawingTab = this.activeTab === 'cream' || this.activeTab === 'paint';
 			if (!isDrawingTab || !Utils.pointInMask(this._maskCanvas, point.x, point.y)) {
-				this._render();
+				this._requestRender();
 				return;
 			}
 
@@ -507,7 +549,7 @@ const DecorateModule = {
 					seed,
 				});
 				this._syncState();
-				this._render();
+				this._requestRender();
 				return;
 			}
 
@@ -521,7 +563,7 @@ const DecorateModule = {
 				brightness: parseInt(document.getElementById('decorate-paint-brightness').value, 10) || 72,
 				seed: Date.now() % 100000,
 			};
-			this._render();
+			this._requestRender();
 		};
 
 		const move = (event) => {
@@ -535,7 +577,7 @@ const DecorateModule = {
 				element.rotation = this._pinch.startRotation + (angle - this._pinch.startAngle);
 				const scaleFactor = dist / this._pinch.startDist;
 				element.scale = Utils.clamp(this._pinch.startScale * scaleFactor, 0.08, 0.5);
-				this._render();
+				this._requestRender();
 				return;
 			}
 
@@ -557,7 +599,7 @@ const DecorateModule = {
 				const element = this.elements[this._selectedIdx];
 				element.nx = ((point.x - this._dragOffset.x) - this._layout.frame.x) / this._layout.frame.width;
 				element.ny = ((point.y - this._dragOffset.y) - this._layout.frame.y) / this._layout.frame.height;
-				this._render();
+				this._requestRender();
 				return;
 			}
 
@@ -570,7 +612,7 @@ const DecorateModule = {
 				return;
 			}
 			this._currentStroke.points.push(this._normalizePoint(point));
-			this._render();
+			this._requestRender();
 		};
 
 		const end = (event) => {
@@ -599,7 +641,7 @@ const DecorateModule = {
 			this._draggingElement = false;
 			this._currentStroke = null;
 			this._updateSelectionTools();
-			this._render();
+			this._requestRender();
 		};
 
 		const wheel = (event) => {
@@ -614,7 +656,7 @@ const DecorateModule = {
 				element.scale = Utils.clamp(element.scale + (event.deltaY > 0 ? -0.03 : 0.03), 0.08, 0.5);
 			}
 			this._syncState();
-			this._render();
+			this._requestRender();
 		};
 
 		this.canvas.addEventListener('mousedown', start);
@@ -680,6 +722,16 @@ const DecorateModule = {
 			}
 		}
 		return -1;
+	},
+
+	_requestRender() {
+		if (this._renderFrame) {
+			return;
+		}
+		this._renderFrame = requestAnimationFrame(() => {
+			this._renderFrame = 0;
+			this._render();
+		});
 	},
 
 	_render() {
@@ -785,7 +837,7 @@ const DecorateModule = {
 		const element = this.elements[this._selectedIdx];
 		element.scale = Utils.clamp((element.scale || 0.18) + delta, 0.08, 0.5);
 		this._syncState();
-		this._render();
+		this._requestRender();
 	},
 
 	_nudgeSelectedElementRotation(delta) {
@@ -795,7 +847,7 @@ const DecorateModule = {
 		const element = this.elements[this._selectedIdx];
 		element.rotation = (element.rotation || 0) + delta;
 		this._syncState();
-		this._render();
+		this._requestRender();
 	},
 
 	_deleteSelectedElement() {
@@ -806,17 +858,17 @@ const DecorateModule = {
 		this._selectedIdx = -1;
 		this._syncState();
 		this._updateSelectionTools();
-		this._render();
+		this._requestRender();
 	},
 
 	_syncState() {
 		App.state.paintStrokes = this.strokes.map((stroke) => ({
 			...stroke,
-			points: stroke.points.map((point) => ({ ...point })),
+			points: (stroke.points || []).map((point) => ({ ...point })),
 		}));
 		App.state.creamStrokes = this.creamStrokes.map((stroke) => ({
 			...stroke,
-			points: stroke.points.map((point) => ({ ...point })),
+			points: (stroke.points || []).map((point) => ({ ...point })),
 		}));
 		App.state.decorations = this.elements.map(({ img, ...rest }) => ({ ...rest }));
 		App.saveState();
@@ -825,6 +877,8 @@ const DecorateModule = {
 	destroy() {
 		this._syncState();
 		this._destroyPaletteGhost();
+		cancelAnimationFrame(this._renderFrame);
+		this._renderFrame = 0;
 		this._cleanupFns.forEach((cleanup) => cleanup());
 		this._cleanupFns = [];
 	},

@@ -30,6 +30,7 @@ const CeremonyModule = {
     this.actionBtn = document.getElementById('ceremony-action-btn');
     this.volMeter = document.getElementById('ceremony-vol-meter');
     this.volBar = document.getElementById('ceremony-vol-bar');
+    this.volStatus = document.getElementById('ceremony-vol-status');
 
     this._allLit = false;
     this._allBlown = false;
@@ -59,6 +60,7 @@ const CeremonyModule = {
     if (this.volMeter) {
       this.volMeter.classList.add('hidden');
     }
+    this._setVolumeFeedback(0, '等待麦克风输入');
   },
 
   async _loadAssets() {
@@ -83,9 +85,7 @@ const CeremonyModule = {
   },
 
   _resizeCanvas(canvas) {
-    const rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = Math.max(360, Math.round(rect.width * 2));
-    canvas.height = Math.max(420, Math.round(rect.height * 2));
+    Utils.resizeCanvasToDisplaySize(canvas, { minWidth: 340, minHeight: 420 });
   },
 
   _setupCandles() {
@@ -352,17 +352,23 @@ const CeremonyModule = {
     this.wishText.classList.add('hidden');
     this.actionBtn.classList.add('hidden');
     this.hintEl.classList.remove('ceremony-hint--center');
-    this.hintEl.textContent = '对着屏幕吹气，或直接点蜡烛火苗';
+    this.hintEl.textContent = '请允许麦克风并对着屏幕吹气，也可以直接点火苗熄灭';
     if (this.volMeter) {
       this.volMeter.classList.remove('hidden');
     }
+    this._setVolumeFeedback(0, '等待授权；若不授权，可直接点火苗熄灭');
+
+    if (App.state.micPermissionState === 'denied') {
+      this._enterManualBlowMode('麦克风已关闭：可直接点火苗熄灭蜡烛');
+      return;
+    }
+
     this._requestMic();
   },
 
   _requestMic() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      this._micMode = false;
-      this.hintEl.textContent = '点击蜡烛火焰熄灭蜡烛';
+      this._enterManualBlowMode('当前浏览器不支持麦克风：请点火苗熄灭');
       return;
     }
 
@@ -378,24 +384,32 @@ const CeremonyModule = {
     navigator.mediaDevices.getUserMedia(constraints)
       .then((stream) => {
         this._micMode = true;
-        this._stream = stream;
-        this.hintEl.textContent = '对着屏幕吹气，或直接点蜡烛火苗';
+        App.state.micPermissionState = 'granted';
+        App.saveState();
+        this.hintEl.textContent = '正在收音：音量条越满越接近吹灭阈值，也可以点火苗';
+        this._setVolumeFeedback(0, '已授权，开始检测吹气');
         this._startBlowDetection(stream);
       })
       .catch(() => {
-        this._micMode = false;
-        this.hintEl.textContent = '点击蜡烛火焰熄灭蜡烛';
+        App.state.micPermissionState = 'denied';
+        App.saveState();
+        this._enterManualBlowMode('麦克风未授权：可直接点火苗熄灭蜡烛');
       });
+  },
+
+  _enterManualBlowMode(message) {
+    this._micMode = false;
+    this.hintEl.textContent = message || '点击蜡烛火焰熄灭蜡烛';
+    if (this.volMeter) {
+      this.volMeter.classList.remove('hidden');
+    }
+    this._setVolumeFeedback(0, message || '手动模式：点火苗熄灭');
   },
 
   _startBlowDetection(stream) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) {
-      this._micMode = false;
-      this.hintEl.textContent = '点击蜡烛火焰熄灭蜡烛';
-      if (this.volMeter) {
-        this.volMeter.classList.add('hidden');
-      }
+      this._enterManualBlowMode('当前浏览器不支持音频检测：请点火苗熄灭');
       return;
     }
 
@@ -414,12 +428,6 @@ const CeremonyModule = {
     let baselineBass = 0;
     let warmupFrames = 0;
     let blowFrames = 0;
-
-    const updateVolumeMeter = (level) => {
-      if (this.volBar) {
-        this.volBar.style.width = `${Math.min(100, level * 100)}%`;
-      }
-    };
 
     const check = () => {
       if (this._allBlown || !this._analyser) {
@@ -445,17 +453,22 @@ const CeremonyModule = {
       }
       const rms = Math.sqrt(squareSum / waveformData.length);
       const blowScore = rms * 1.35 + peak * 0.65 + bassEnergy * 0.4 + avgFrequency * 0.25;
+      const rawInputLevel = Math.min(1, (rms * 1.6 + peak * 0.9 + avgFrequency * 0.18) / 80);
 
       if (warmupFrames < 10) {
         baselineScore = warmupFrames === 0 ? blowScore : baselineScore * 0.72 + blowScore * 0.28;
         baselineBass = warmupFrames === 0 ? bassEnergy : baselineBass * 0.72 + bassEnergy * 0.28;
         warmupFrames += 1;
-        updateVolumeMeter(0);
+        this._setVolumeFeedback(rawInputLevel, `校准环境音 ${warmupFrames}/10；当前输入 ${Math.round(rawInputLevel * 100)}%`);
       } else {
         baselineScore = baselineScore * 0.96 + blowScore * 0.04;
         baselineBass = baselineBass * 0.96 + bassEnergy * 0.04;
-        const normalizedLevel = Math.min(1, (blowScore - baselineScore) / (baselineScore * 2));
-        updateVolumeMeter(normalizedLevel);
+        const dynamicScoreThreshold = Math.max(12, baselineScore * 1.45);
+        const meterLevel = Math.max(rawInputLevel, Math.min(1, blowScore / (dynamicScoreThreshold * 1.35)));
+        this._setVolumeFeedback(
+          meterLevel,
+          `当前输入 ${Math.round(rawInputLevel * 100)}%，吹灭阈值约 ${Math.round(Math.min(100, 100 / 1.35))}%`,
+        );
       }
 
       const dynamicScoreThreshold = Math.max(12, baselineScore * 1.45);
@@ -497,6 +510,16 @@ const CeremonyModule = {
     }
 
     startDetection();
+  },
+
+  _setVolumeFeedback(level, message) {
+    const safeLevel = Utils.clamp(level || 0, 0, 1);
+    if (this.volBar) {
+      this.volBar.style.width = `${Math.round(safeLevel * 100)}%`;
+    }
+    if (this.volStatus && message) {
+      this.volStatus.textContent = message;
+    }
   },
 
   _stopMicCapture(closeAudioContext = true) {
