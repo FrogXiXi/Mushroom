@@ -73,6 +73,8 @@ const CakeCutModule = {
     this._fullMaskCanvas = Utils.createMaskCanvas(this._sceneCanvas.width, this._sceneCanvas.height, this._layout, {
       decorations: App.state.decorations || [],
       decorationImages: this._decorationImages,
+      creamStrokes: App.state.creamStrokes || [],
+      creamStampImages: this._creamStampImages,
     });
 
     Utils.drawCakeArtwork(sceneCtx, {
@@ -475,7 +477,7 @@ const CakeCutModule = {
     const frame = this._layout.frame;
     const centerX = frame.x + frame.width * 0.5;
     const centerY = frame.y + frame.height * 0.5;
-    const radius = Math.hypot(frame.width, frame.height) * 0.72;
+    const radius = Math.hypot(this._fullMaskCanvas.width, this._fullMaskCanvas.height);
     const startAngle = -Math.PI / 2 + (index * Math.PI * 2) / count;
     const endAngle = -Math.PI / 2 + ((index + 1) * Math.PI * 2) / count;
 

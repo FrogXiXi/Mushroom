@@ -93,7 +93,8 @@ const CreamMakingModule = {
     this.eggTool = document.getElementById('egg-tool');
     this.mixerTool = document.getElementById('mixer-tool');
     this.bowlArea = document.getElementById('cream-bowl-area');
-    this.bowlContentImg = document.getElementById('bowl-content-img');
+    this.bowlCreamImg = document.getElementById('bowl-cream-img');
+    this.bowlCompositeImg = document.getElementById('bowl-composite-img');
     this.liquid = document.getElementById('cream-liquid');
     this.picker = document.getElementById('color-picker');
     this.progressWrap = document.getElementById('cream-progress');
@@ -132,7 +133,8 @@ const CreamMakingModule = {
     this.nextBtn.classList.add('hidden');
     this.nextBtn.onclick = null;
     this.eggTool.style.visibility = 'visible';
-    this._setBowlContent(null);
+    this._setBowlLayers();
+    this._setLiquidMask();
     this._setStageLayout('egg');
     this.spatulaTool.classList.add('hidden');
     this.spatulaTool.classList.remove('dragging');
@@ -802,7 +804,8 @@ const CreamMakingModule = {
 
   _renderLiquid(color = App.state.creamColor, mixFactor = this._colorMixed ? 1 : 0) {
     if (!this._eggAdded) {
-      this._setBowlContent(null);
+      this._setBowlLayers();
+      this._setLiquidMask();
       this.liquid.style.opacity = '0';
       this.liquid.style.transform = 'scale(0.94)';
       this.liquid.style.boxShadow = 'none';
@@ -816,21 +819,16 @@ const CreamMakingModule = {
     const whipFactor = Utils.clamp(this.whipProgress / 100, 0, 1);
 
     if (!this._colorMixed && safeMix <= 0) {
-      if (whipFactor > 0.04) {
-        const creamStrength = Utils.clamp(whipFactor, 0, 1);
-        this._setBowlContent(CONFIG.bowlCreamSrc, {
-          opacity: 0.46 + creamStrength * 0.5,
-          filter: `saturate(${0.92 + creamStrength * 0.08}) brightness(${1 + creamStrength * 0.04})`,
-        });
-        this.liquid.style.opacity = '0';
-        this.liquid.style.boxShadow = 'none';
-        this.liquid.style.transform = 'scale(1)';
-        this.liquid.style.filter = 'none';
-        this.liquid.style.mixBlendMode = 'normal';
-        return;
-      }
-
-      this._setBowlContent(CONFIG.bowlEggSrc, { composite: true });
+      const creamReveal = Utils.smoothstep(Utils.clamp((whipFactor - 0.18) / 0.58, 0, 1));
+      const eggFade = 1 - Utils.smoothstep(Utils.clamp((whipFactor - 0.08) / 0.34, 0, 1));
+      this._setBowlLayers({
+        compositeSrc: CONFIG.bowlEggSrc,
+        compositeOpacity: eggFade,
+        creamSrc: CONFIG.bowlCreamSrc,
+        creamOpacity: creamReveal * 0.96,
+        creamFilter: `saturate(${0.92 + creamReveal * 0.08}) brightness(${1 + creamReveal * 0.04})`,
+      });
+      this._setLiquidMask();
       this.liquid.style.opacity = '0';
       this.liquid.style.boxShadow = 'none';
       this.liquid.style.transform = 'scale(1)';
@@ -839,19 +837,74 @@ const CreamMakingModule = {
       return;
     }
 
-    this._setBowlContent(CONFIG.bowlCreamSrc, {
-      opacity: 0.96,
-      filter: 'saturate(1.02) brightness(1.02)',
+    this._setBowlLayers({
+      creamSrc: CONFIG.bowlCreamSrc,
+      creamOpacity: 0.98,
+      creamFilter: 'saturate(1.02) brightness(1.02)',
     });
-    const topHighlight = Utils.hexToRgba(active.hex, 0.78 + safeMix * 0.1);
-    const midTone = Utils.hexToRgba(active.hex, 0.86 + safeMix * 0.08);
-    const bottomTone = Utils.hexToRgba(active.hex, 0.9 + safeMix * 0.05);
-    this.liquid.style.background = `radial-gradient(circle at 48% 34%, rgba(255,255,255,${0.24 + safeMix * 0.18}), ${topHighlight} 42%, ${midTone} 68%, ${bottomTone} 100%)`;
-    this.liquid.style.opacity = `${0.7 + safeMix * 0.18 + whipFactor * 0.08}`;
-    this.liquid.style.boxShadow = `inset 0 ${8 + whipFactor * 12}px ${18 + whipFactor * 14}px rgba(255,255,255,${0.14 + safeMix * 0.16 + whipFactor * 0.08})`;
-    this.liquid.style.transform = `scale(${0.99 + safeMix * 0.03 + whipFactor * 0.12})`;
-    this.liquid.style.filter = `saturate(${1 + safeMix * 0.16}) brightness(${1 + whipFactor * 0.04})`;
+    this._setLiquidMask(CONFIG.bowlCreamSrc);
+
+    const topHighlight = Utils.hexToRgba(active.hex, 0.72 + safeMix * 0.16);
+    const midTone = Utils.hexToRgba(active.hex, 0.8 + safeMix * 0.14);
+    const bottomTone = Utils.hexToRgba(active.hex, 0.84 + safeMix * 0.1);
+    this.liquid.style.background = `radial-gradient(circle at 50% 38%, rgba(255,255,255,${0.2 + safeMix * 0.18}), ${topHighlight} 38%, ${midTone} 66%, ${bottomTone} 100%)`;
+    this.liquid.style.opacity = `${0.1 + safeMix * 0.78 + whipFactor * 0.08}`;
+    this.liquid.style.boxShadow = 'none';
+    this.liquid.style.transform = 'scale(1)';
+    this.liquid.style.filter = `saturate(${1 + safeMix * 0.18}) brightness(${1 + whipFactor * 0.04})`;
     this.liquid.style.mixBlendMode = 'multiply';
+  },
+
+  _setLayerImage(img, src) {
+    if (!img) {
+      return;
+    }
+
+    if (!src) {
+      img.classList.add('hidden');
+      img.removeAttribute('src');
+      img.style.opacity = '';
+      img.style.filter = '';
+      return;
+    }
+
+    const nextSrc = Utils.loadImageUrl(src, { extPriority: ['webp', 'png'] });
+    if (img.getAttribute('src') !== nextSrc) {
+      img.src = nextSrc;
+    }
+    img.classList.remove('hidden');
+  },
+
+  _setBowlLayers(options = {}) {
+    const {
+      compositeSrc = null,
+      compositeOpacity = 0,
+      creamSrc = null,
+      creamOpacity = 0,
+      creamFilter = '',
+    } = options;
+
+    this._setLayerImage(this.bowlCompositeImg, compositeOpacity > 0.01 ? compositeSrc : null);
+    if (this.bowlCompositeImg) {
+      this.bowlCompositeImg.style.opacity = compositeOpacity > 0.01 ? String(compositeOpacity) : '';
+      this.bowlCompositeImg.style.filter = '';
+    }
+
+    this._setLayerImage(this.bowlCreamImg, creamOpacity > 0.01 ? creamSrc : null);
+    if (this.bowlCreamImg) {
+      this.bowlCreamImg.style.opacity = creamOpacity > 0.01 ? String(creamOpacity) : '';
+      this.bowlCreamImg.style.filter = creamFilter;
+    }
+  },
+
+  _setLiquidMask(src = null) {
+    if (!this.liquid) {
+      return;
+    }
+
+    const maskUrl = src ? `url("${Utils.loadImageUrl(src, { extPriority: ['webp', 'png'] })}")` : '';
+    this.liquid.style.webkitMaskImage = maskUrl;
+    this.liquid.style.maskImage = maskUrl;
   },
 
   _renderApplyPreview() {
@@ -912,36 +965,6 @@ const CreamMakingModule = {
 
   _setHint(text) {
     document.getElementById('cream-hint').textContent = text;
-  },
-
-  _setBowlContent(src, options = {}) {
-    if (!this.bowlArea || !this.bowlContentImg) {
-      return;
-    }
-
-    const {
-      composite = false,
-      opacity = '',
-      filter = '',
-    } = options;
-
-    this.bowlArea.classList.toggle('bowl-state-composite', composite);
-
-    if (!src) {
-      this.bowlContentImg.classList.add('hidden');
-      this.bowlContentImg.removeAttribute('src');
-      this.bowlContentImg.style.opacity = '';
-      this.bowlContentImg.style.filter = '';
-      return;
-    }
-
-    const nextSrc = Utils.loadImageUrl(src, { extPriority: ['webp', 'png'] });
-    if (this.bowlContentImg.getAttribute('src') !== nextSrc) {
-      this.bowlContentImg.src = nextSrc;
-    }
-    this.bowlContentImg.classList.remove('hidden');
-    this.bowlContentImg.style.opacity = opacity === '' ? '' : String(opacity);
-    this.bowlContentImg.style.filter = filter;
   },
 
   _setMixerActive(active) {

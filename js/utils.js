@@ -109,6 +109,11 @@ const Utils = {
     return Math.min(max, Math.max(min, value));
   },
 
+  smoothstep(value) {
+    const t = Utils.clamp(value, 0, 1);
+    return t * t * (3 - 2 * t);
+  },
+
   isCoarsePointer() {
     if (typeof window === 'undefined') {
       return false;
@@ -335,6 +340,8 @@ const Utils = {
     const {
       decorations = [],
       decorationImages = new Map(),
+      creamStrokes = [],
+      creamStampImages = new Map(),
     } = options;
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = width;
@@ -355,6 +362,23 @@ const Utils = {
       maskCtx.drawImage(image, -size.width / 2, -size.height / 2, size.width, size.height);
       maskCtx.restore();
     });
+
+    creamStrokes
+      .filter((item) => item.type === 'cream-stamp')
+      .forEach((stamp) => {
+        const image = creamStampImages.get(stamp.stampSrc);
+        if (!image) {
+          return;
+        }
+        const x = layout.frame.x + stamp.nx * layout.frame.width;
+        const y = layout.frame.y + stamp.ny * layout.frame.height;
+        const size = Math.max(1, (stamp.width || 24) * 1.6);
+        maskCtx.save();
+        maskCtx.translate(x, y);
+        maskCtx.rotate(stamp.rotation || 0);
+        maskCtx.drawImage(image, -size / 2, -size / 2, size, size);
+        maskCtx.restore();
+      });
 
     return maskCanvas;
   },

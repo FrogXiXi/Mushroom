@@ -195,9 +195,6 @@
   clip-path: inset(48% 0 0 0);
   pointer-events: none;
 }
-.cream-bowl-area.bowl-state-composite::after {
-  opacity: 0;
-}
 .bowl-img {
   position: relative;
   z-index: 1;
@@ -213,17 +210,27 @@
   pointer-events: none;
   transition: opacity 260ms ease, filter 260ms ease;
 }
+.bowl-cream-img {
+  z-index: 2;
+}
+.bowl-composite-img {
+  z-index: 4;
+}
 .cream-liquid {
   position: absolute;
-  top: 25%;
-  left: 15%;
-  width: 70%;
-  height: 50%;
-  border-radius: 50%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   background: rgba(255,250,240,0.9);
   opacity: 0;
   z-index: 2;
-  transition: background var(--transition-slow);
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  transition: background var(--transition-slow), opacity var(--transition-slow), filter var(--transition-slow);
   pointer-events: none;
 }
 .mixer-tool {
@@ -391,17 +398,17 @@
   margin-top: 0.3rem;
 }
 .cream-apply-stage {
-  width: min(92vw, 520px);
+  width: min(94vw, 760px);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.8rem;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 }
 .cream-apply-preview {
   position: relative;
   width: 100%;
-  height: clamp(220px, 36vh, 320px);
+  height: clamp(260px, 52vh, 520px);
   border-radius: var(--radius-md);
   background: rgba(255,253,245,0.32);
   box-shadow: inset 0 0 0 1px rgba(139,90,43,0.06), 0 4px 16px rgba(139,90,43,0.05);
@@ -410,6 +417,15 @@
 #cream-apply-canvas {
   width: 100%;
   height: 100%;
+}
+@media (max-width: 767px) {
+  .cream-apply-stage {
+    width: min(92vw, 520px);
+    margin-top: 1rem;
+  }
+  .cream-apply-preview {
+    height: clamp(220px, 42vh, 340px);
+  }
 }
 .spatula-tool {
   position: absolute;
