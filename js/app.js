@@ -12,6 +12,8 @@ const App = {
       decorations: [],
       micPermissionState: 'unknown',
       cutSlices: [],
+      cutCardMessage: '生日快乐',
+      cutPiecePulled: false,
       magicCardRevealed: false,
       albumReminderPending: false,
       editorSettings: {
@@ -81,6 +83,10 @@ const App = {
       creamColor,
       micPermissionState: state.micPermissionState || 'unknown',
       cutSlices: Array.isArray(state.cutSlices) ? state.cutSlices : [],
+      cutCardMessage: typeof state.cutCardMessage === 'string' && state.cutCardMessage.trim()
+        ? state.cutCardMessage
+        : '生日快乐',
+      cutPiecePulled: !!state.cutPiecePulled,
       paintStrokes: (state.paintStrokes || []).map((stroke) => ({
         ...stroke,
         points: (stroke.points || []).map((point) => Utils.normalizeStoredPoint(point)),
@@ -144,6 +150,8 @@ const App = {
       || (serialized.creamStrokes || []).length > 0
       || (serialized.decorations || []).length > 0
       || (serialized.cutSlices || []).length > 0
+      || serialized.cutCardMessage !== defaults.cutCardMessage
+      || serialized.cutPiecePulled !== defaults.cutPiecePulled
       || serialized.magicCardRevealed !== defaults.magicCardRevealed
       || serialized.albumReminderPending !== defaults.albumReminderPending;
   },

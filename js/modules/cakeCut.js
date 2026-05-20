@@ -1,6 +1,6 @@
 /**
  * 模块8: 切蛋糕互动
- * 固定 8 等分模型：从完整 DIY 蛋糕画布裁出 8 片，避免自由切线生成随机碎片。
+ * 参考纸艺蛋糕：在右侧切出一小块，拉出后露出可编辑祝福贺卡。
  */
 const CakeCutModule = {
   _pieces: [],
@@ -8,6 +8,8 @@ const CakeCutModule = {
   _knifeDragging: false,
   _sceneCanvas: null,
   _fullMaskCanvas: null,
+  _sliceMaskCanvas: null,
+  _mainMaskCanvas: null,
   _cakeLayers: [],
   _decorationImages: new Map(),
   _creamStampImages: new Map(),
@@ -15,9 +17,9 @@ const CakeCutModule = {
   _dragIdx: -1,
   _dragStart: null,
   _origOffset: null,
-  _plateActive: false,
   _drawFrame: 0,
   _cleanupFns: [],
+  _cutComplete: false,
 
   async init() {
     this.canvas = document.getElementById('cut-canvas');
@@ -25,10 +27,12 @@ const CakeCutModule = {
     this.cutArea = document.querySelector('.cut-area');
     this.hintEl = document.getElementById('cut-hint');
     this.knifeEl = document.getElementById('cut-knife');
-    this.plateZone = document.getElementById('plate-dropzone');
     this.finishBtn = document.getElementById('plate-finish-btn');
+    this.cardEl = document.getElementById('cut-card');
+    this.cardInput = document.getElementById('cut-card-message');
 
     this._resizeCanvas(this.canvas);
+    this._initCard();
     await this._loadAssets();
     this._buildSceneCanvas();
     this._rememberKnifeHome();
@@ -36,13 +40,23 @@ const CakeCutModule = {
     this._bindKnifeEvents();
     this._bindPieceDragEvents();
     this._bindUiEvents();
-    this._updatePlateState();
     this._draw();
 
-    this.hintEl.textContent = this._pieces.length > 1
-      ? '已恢复 8 等分蛋糕，可以把蛋糕拖到盘子里'
-      : '拖动蛋糕刀，在蛋糕上画一刀切成固定 8 等分';
     this.knifeEl.classList.add('active');
+    this.hintEl.textContent = this._cutComplete
+      ? '拉出右边的小蛋糕，写下祝福后就可以完成'
+      : '用蛋糕刀在蛋糕右侧竖着划一刀';
+  },
+
+  _initCard() {
+    const message = typeof App.state.cutCardMessage === 'string' && App.state.cutCardMessage.trim()
+      ? App.state.cutCardMessage
+      : '生日快乐';
+    App.state.cutCardMessage = message;
+    if (this.cardInput) {
+      this.cardInput.value = message;
+    }
+    this._setCardVisible(!!App.state.cutPiecePulled || !!App.state.magicCardRevealed);
   },
 
   async _loadAssets() {
@@ -97,35 +111,33 @@ const CakeCutModule = {
   },
 
   _initPieces() {
-    const savedSlices = Array.isArray(App.state.cutSlices) ? App.state.cutSlices : [];
-    if (savedSlices.length > 0) {
-      this._splitIntoFixedSlices(savedSlices);
-      this._activatePlateStage();
+    if (App.state.cutPiecePulled || App.state.magicCardRevealed) {
+      this._createPulledCake({ restored: true });
       return;
     }
 
+    this._cutComplete = false;
     this._pieces = [this._createPiece(this._fullMaskCanvas, 0, 0, {
       id: 'whole_cake',
-      sliceIndex: -1,
-      plated: false,
-      plateSlot: -1,
+      role: 'whole',
+      draggable: false,
     })];
+    this._setCardVisible(false);
+    this.finishBtn.classList.add('hidden');
   },
 
   _createPiece(maskCanvas, offsetX, offsetY, meta = {}) {
     const bounds = this._getCanvasBounds(maskCanvas);
     const artCanvas = this._maskSourceCanvas(this._sceneCanvas, maskCanvas, bounds);
     return {
-      id: meta.id || `slice_${meta.sliceIndex ?? Date.now()}`,
-      sliceIndex: typeof meta.sliceIndex === 'number' ? meta.sliceIndex : -1,
+      id: meta.id || 'cake_piece',
+      role: meta.role || 'piece',
       canvas: artCanvas,
       maskCanvas: this._cloneCanvas(maskCanvas),
       bounds,
       offsetX,
       offsetY,
-      plated: !!meta.plated,
-      plateSlot: typeof meta.plateSlot === 'number' ? meta.plateSlot : -1,
-      faceSrc: meta.faceSrc || null,
+      draggable: !!meta.draggable,
     };
   },
 
@@ -157,6 +169,10 @@ const CakeCutModule = {
       this.ctx.drawImage(piece.canvas, piece.bounds.x + piece.offsetX, piece.bounds.y + piece.offsetY);
     });
 
+    if (this._cutComplete) {
+      this._drawCutSeam();
+    }
+
     if (this._cutLine.length > 1) {
       this.ctx.beginPath();
       this.ctx.strokeStyle = 'rgba(60,40,20,0.72)';
@@ -171,6 +187,26 @@ const CakeCutModule = {
     }
   },
 
+  _drawCutSeam() {
+    const frame = this._layout.frame;
+    const seamX = this._getSliceCutX();
+    this.ctx.save();
+    this.ctx.strokeStyle = 'rgba(123, 73, 60, 0.38)';
+    this.ctx.lineWidth = Math.max(2, frame.width * 0.01);
+    this.ctx.beginPath();
+    this.ctx.moveTo(seamX, frame.y + frame.height * 0.08);
+    this.ctx.bezierCurveTo(
+      seamX + frame.width * 0.015,
+      frame.y + frame.height * 0.34,
+      seamX - frame.width * 0.01,
+      frame.y + frame.height * 0.68,
+      seamX + frame.width * 0.012,
+      frame.y + frame.height * 0.94,
+    );
+    this.ctx.stroke();
+    this.ctx.restore();
+  },
+
   _requestDraw() {
     if (this._drawFrame) {
       return;
@@ -183,6 +219,9 @@ const CakeCutModule = {
 
   _bindKnifeEvents() {
     const start = (event) => {
+      if (this._cutComplete) {
+        return;
+      }
       event.preventDefault();
       this._knifeDragging = true;
       this.knifeEl.classList.add('dragging');
@@ -241,13 +280,13 @@ const CakeCutModule = {
 
   _bindPieceDragEvents() {
     const start = (event) => {
-      if (this._knifeDragging || this._pieces.length <= 1) {
+      if (this._knifeDragging || !this._cutComplete) {
         return;
       }
 
       const point = Utils.getCanvasPos(this.canvas, event);
       const hitIndex = this._hitTestPiece(point);
-      if (hitIndex < 0) {
+      if (hitIndex < 0 || !this._pieces[hitIndex].draggable) {
         return;
       }
 
@@ -258,12 +297,6 @@ const CakeCutModule = {
         x: this._pieces[hitIndex].offsetX,
         y: this._pieces[hitIndex].offsetY,
       };
-
-      if (this._pieces[hitIndex].plated) {
-        this._pieces[hitIndex].plated = false;
-        this._pieces[hitIndex].plateSlot = -1;
-        this._updatePlateState();
-      }
     };
 
     const move = (event) => {
@@ -283,9 +316,6 @@ const CakeCutModule = {
       if (this._dragIdx < 0) {
         return;
       }
-
-      const piece = this._pieces[this._dragIdx];
-      this._trySnapPieceToPlate(piece);
       this._dragIdx = -1;
       this._dragStart = null;
       this._origOffset = null;
@@ -314,18 +344,25 @@ const CakeCutModule = {
 
   _bindUiEvents() {
     this.finishBtn.onclick = () => {
-      if (!this._pieces.some((piece) => piece.plated)) {
-        Utils.showToast('先把切好的蛋糕拖到盘子里吧～', 1800);
+      if (!this._cutComplete) {
+        Utils.showToast('先切出右边的小蛋糕吧', 1600);
         return;
       }
       this._syncState();
       setTimeout(() => {
         App.goTo('mod-ending');
-      }, 500);
+      }, 400);
     };
+
+    const onCardInput = () => {
+      App.state.cutCardMessage = this.cardInput.value.trim() || '生日快乐';
+      App.saveState();
+    };
+    this.cardInput.addEventListener('input', onCardInput);
 
     this._cleanupFns.push(() => {
       this.finishBtn.onclick = null;
+      this.cardInput.removeEventListener('input', onCardInput);
     });
   },
 
@@ -369,38 +406,43 @@ const CakeCutModule = {
       return;
     }
 
-    if (this._pieces.length > 1) {
-      this.hintEl.textContent = '蛋糕已按固定 8 等分切好，可以拖动任意一片装盘';
-      this._cutLine = [];
-      this._requestDraw();
-      return;
-    }
-
-    if (!this._cutLineHitsCake()) {
-      this.hintEl.textContent = '这刀没有落在蛋糕上，换个位置再试试';
+    if (!this._cutLineHitsRightCutZone()) {
+      this.hintEl.textContent = '请在蛋糕右侧竖着切一刀';
       this._cutLine = [];
       this._requestDraw();
       return;
     }
 
     this._cutLine = [];
-    this._splitIntoFixedSlices();
-    this._activatePlateStage();
-    this._updatePlateState();
+    this._createPulledCake();
     this._syncState();
-    this.hintEl.textContent = '已经切成固定 8 等分，拖一片到盘子里吧';
+    this.hintEl.textContent = '拉出右边的小蛋糕，在贺卡上写下祝福';
     this._requestDraw();
   },
 
-  _cutLineHitsCake() {
+  _cutLineHitsRightCutZone() {
     const samples = this._getCutLineSamples();
+    const frame = this._layout.frame;
+    const minX = frame.x + frame.width * 0.58;
+    const maxX = frame.x + frame.width * 1.04;
     let hits = 0;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
     for (const sample of samples) {
-      if (this._pointInMaskCanvas(this._fullMaskCanvas, sample.x, sample.y)) {
-        hits += 1;
+      if (sample.x < minX || sample.x > maxX) {
+        continue;
       }
+      if (!this._pointInMaskCanvas(this._fullMaskCanvas, sample.x, sample.y)) {
+        continue;
+      }
+      hits += 1;
+      minY = Math.min(minY, sample.y);
+      maxY = Math.max(maxY, sample.y);
     }
-    return hits >= Math.max(2, Math.ceil(samples.length * 0.08));
+
+    return hits >= Math.max(2, Math.ceil(samples.length * 0.08))
+      && maxY - minY >= frame.height * 0.18;
   },
 
   _getCutLineSamples() {
@@ -430,61 +472,56 @@ const CakeCutModule = {
     return samples;
   },
 
-  _splitIntoFixedSlices(savedSlices = []) {
-    const savedByIndex = new Map(savedSlices.map((slice) => [slice.index, slice]));
-    const count = CONFIG.cutSliceCount || 8;
+  _createPulledCake({ restored = false } = {}) {
+    this._cutComplete = true;
+    this._sliceMaskCanvas = this._createRightSliceMask();
+    this._mainMaskCanvas = this._createMainCakeMask(this._sliceMaskCanvas);
     const frame = this._layout.frame;
-    const separation = Math.max(8, frame.width * (CONFIG.cutSliceSeparation || 0.018));
+    const defaultOffset = {
+      x: frame.width * (restored ? 0.16 : 0.11),
+      y: frame.height * 0.012,
+    };
 
-    this._pieces = [];
-    for (let index = 0; index < count; index += 1) {
-      const angle = this._getSliceMidAngle(index, count);
-      const saved = savedByIndex.get(index) || {};
-      const defaultOffsetX = Math.cos(angle) * separation;
-      const defaultOffsetY = Math.sin(angle) * separation;
-      const offsetX = typeof saved.offsetX === 'number'
-        ? saved.offsetX
-        : typeof saved.ox === 'number'
-          ? saved.ox * this.canvas.width
-          : defaultOffsetX;
-      const offsetY = typeof saved.offsetY === 'number'
-        ? saved.offsetY
-        : typeof saved.oy === 'number'
-          ? saved.oy * this.canvas.height
-          : defaultOffsetY;
-      const piece = this._createPiece(this._createSliceMask(index, count), offsetX, offsetY, {
-        id: `slice_${index}`,
-        sliceIndex: index,
-        plated: saved.plated,
-        plateSlot: saved.plateSlot,
-        faceSrc: CONFIG.cutSliceFaceSrcs?.[index] || null,
-      });
-      this._clampPieceOffset(piece);
-      this._pieces.push(piece);
-    }
+    this._pieces = [
+      this._createPiece(this._mainMaskCanvas, 0, 0, {
+        id: 'main_cake',
+        role: 'main',
+        draggable: false,
+      }),
+      this._createPiece(this._sliceMaskCanvas, defaultOffset.x, defaultOffset.y, {
+        id: 'pull_slice',
+        role: 'slice',
+        draggable: true,
+      }),
+    ];
+
+    this._clampPieceOffset(this._pieces[1]);
+    this._setCardVisible(true);
+    this.finishBtn.classList.remove('hidden');
+    App.state.cutPiecePulled = true;
+    App.state.magicCardRevealed = true;
+    App.state.cutSlices = [];
   },
 
-  _getSliceMidAngle(index, count = CONFIG.cutSliceCount || 8) {
-    const startAngle = -Math.PI / 2 + (index * Math.PI * 2) / count;
-    return startAngle + Math.PI / count;
+  _getSliceCutX() {
+    return this._layout.frame.x + this._layout.frame.width * 0.72;
   },
 
-  _createSliceMask(index, count = CONFIG.cutSliceCount || 8) {
+  _createRightSliceMask() {
     const canvas = document.createElement('canvas');
     canvas.width = this._fullMaskCanvas.width;
     canvas.height = this._fullMaskCanvas.height;
     const ctx = canvas.getContext('2d');
     const frame = this._layout.frame;
-    const centerX = frame.x + frame.width * 0.5;
-    const centerY = frame.y + frame.height * 0.5;
-    const radius = Math.hypot(this._fullMaskCanvas.width, this._fullMaskCanvas.height);
-    const startAngle = -Math.PI / 2 + (index * Math.PI * 2) / count;
-    const endAngle = -Math.PI / 2 + ((index + 1) * Math.PI * 2) / count;
+    const cutX = this._getSliceCutX();
+    const rightX = frame.x + frame.width * 1.08;
 
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
+    ctx.moveTo(cutX, frame.y - frame.height * 0.08);
+    ctx.lineTo(rightX, frame.y - frame.height * 0.02);
+    ctx.lineTo(rightX, frame.y + frame.height * 1.08);
+    ctx.lineTo(cutX - frame.width * 0.012, frame.y + frame.height * 1.02);
     ctx.closePath();
     ctx.fill();
     ctx.globalCompositeOperation = 'destination-in';
@@ -492,8 +529,22 @@ const CakeCutModule = {
     return canvas;
   },
 
+  _createMainCakeMask(sliceMaskCanvas) {
+    const canvas = document.createElement('canvas');
+    canvas.width = this._fullMaskCanvas.width;
+    canvas.height = this._fullMaskCanvas.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(this._fullMaskCanvas, 0, 0);
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.drawImage(sliceMaskCanvas, 0, 0);
+    return canvas;
+  },
+
   _hitTestPiece(point) {
     for (let index = this._pieces.length - 1; index >= 0; index -= 1) {
+      if (!this._pieces[index].draggable) {
+        continue;
+      }
       if (this._pointInPiece(this._pieces[index], point)) {
         return index;
       }
@@ -553,121 +604,26 @@ const CakeCutModule = {
 
   _clampPieceOffset(piece) {
     const minX = -piece.bounds.x;
-    const maxX = this.canvas.width - (piece.bounds.x + piece.bounds.width);
+    const maxX = this.canvas.width - (piece.bounds.x + piece.bounds.width * 0.42);
     const minY = -piece.bounds.y;
     const maxY = this.canvas.height - (piece.bounds.y + piece.bounds.height);
     piece.offsetX = Utils.clamp(piece.offsetX, minX, maxX);
     piece.offsetY = Utils.clamp(piece.offsetY, minY, maxY);
   },
 
-  _activatePlateStage() {
-    if (this._plateActive) {
+  _setCardVisible(visible) {
+    if (!this.cardEl) {
       return;
     }
-    this._plateActive = true;
-    this.plateZone.classList.remove('hidden');
-  },
-
-  _getPieceVisualCenter(piece) {
-    return {
-      x: piece.bounds.x + piece.bounds.width / 2 + piece.offsetX,
-      y: piece.bounds.y + piece.bounds.height / 2 + piece.offsetY,
-    };
-  },
-
-  _getPlateCanvasRect() {
-    const canvasRect = this.canvas.getBoundingClientRect();
-    const plateRect = this.plateZone.getBoundingClientRect();
-    const scaleX = this.canvas.width / canvasRect.width;
-    const scaleY = this.canvas.height / canvasRect.height;
-    return {
-      x: (plateRect.left - canvasRect.left) * scaleX,
-      y: (plateRect.top - canvasRect.top) * scaleY,
-      width: plateRect.width * scaleX,
-      height: plateRect.height * scaleY,
-    };
-  },
-
-  _getPlateSlots() {
-    const rect = this._getPlateCanvasRect();
-    return [
-      { x: rect.x + rect.width * 0.5, y: rect.y + rect.height * 0.52 },
-      { x: rect.x + rect.width * 0.36, y: rect.y + rect.height * 0.5 },
-      { x: rect.x + rect.width * 0.64, y: rect.y + rect.height * 0.5 },
-      { x: rect.x + rect.width * 0.5, y: rect.y + rect.height * 0.38 },
-    ];
-  },
-
-  _trySnapPieceToPlate(piece) {
-    if (!this._plateActive) {
-      return;
-    }
-
-    const plateRect = this._getPlateCanvasRect();
-    const center = this._getPieceVisualCenter(piece);
-    const inPlate = Utils.isInEllipse(
-      center.x,
-      center.y,
-      plateRect.x + plateRect.width * 0.5,
-      plateRect.y + plateRect.height * 0.54,
-      plateRect.width * 0.34,
-      plateRect.height * 0.18,
-    );
-
-    if (!inPlate) {
-      piece.plated = false;
-      piece.plateSlot = -1;
-      this._updatePlateState();
-      return;
-    }
-
-    const usedSlots = new Set(
-      this._pieces
-        .filter((item) => item.id !== piece.id && item.plated && item.plateSlot >= 0)
-        .map((item) => item.plateSlot),
-    );
-    const slots = this._getPlateSlots();
-    let slotIndex = slots.findIndex((_, index) => !usedSlots.has(index));
-    if (slotIndex < 0) {
-      slotIndex = 0;
-    }
-
-    const slot = slots[slotIndex];
-    piece.plated = true;
-    piece.plateSlot = slotIndex;
-    piece.offsetX = slot.x - (piece.bounds.x + piece.bounds.width / 2);
-    piece.offsetY = slot.y - (piece.bounds.y + piece.bounds.height / 2);
-    this._clampPieceOffset(piece);
-    this._updatePlateState();
-  },
-
-  _updatePlateState() {
-    const platedCount = this._pieces.filter((piece) => piece.plated).length;
-    this.finishBtn.classList.toggle('hidden', platedCount === 0);
-
-    if (!this._plateActive) {
-      this.plateZone.classList.add('hidden');
-      return;
-    }
-
-    this.plateZone.classList.remove('hidden');
-    if (platedCount > 0) {
-      this.hintEl.textContent = '已经装盘啦，可以继续拖其它蛋糕片，也可以完成流程';
-    }
+    this.cardEl.classList.toggle('hidden', !visible);
+    this.cardEl.setAttribute('aria-hidden', visible ? 'false' : 'true');
   },
 
   _syncState() {
-    if (this._pieces.length <= 1) {
-      App.state.cutSlices = [];
-    } else {
-      App.state.cutSlices = this._pieces.map((piece) => ({
-        index: piece.sliceIndex,
-        ox: piece.offsetX / this.canvas.width,
-        oy: piece.offsetY / this.canvas.height,
-        plated: !!piece.plated,
-        plateSlot: piece.plateSlot,
-      }));
-    }
+    App.state.cutCardMessage = this.cardInput?.value.trim() || '生日快乐';
+    App.state.cutPiecePulled = this._cutComplete;
+    App.state.magicCardRevealed = this._cutComplete;
+    App.state.cutSlices = [];
     App.saveState();
   },
 
@@ -681,8 +637,8 @@ const CakeCutModule = {
     this._dragIdx = -1;
     this._dragStart = null;
     this._origOffset = null;
-    this._plateActive = false;
-    this.plateZone.classList.add('hidden');
+    this._cutComplete = false;
+    this._setCardVisible(false);
     this.finishBtn.classList.add('hidden');
     this.knifeEl.classList.remove('dragging');
     this._resetKnife();

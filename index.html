@@ -304,12 +304,12 @@
     <section id="mod-cake-cut" class="module">
       <div class="cut-area">
         <canvas id="cut-canvas" width="800" height="800"></canvas>
-        <div class="plate-dropzone hidden" id="plate-dropzone" aria-hidden="true">
-          <picture>
-            <source srcset="assets/images/cake/plates/single/plate.webp" type="image/webp">
-            <img src="assets/images/cake/plates/single/plate.png" alt="蛋糕盘" draggable="false">
-          </picture>
-          <p class="plate-dropzone-text">把蛋糕拖到盘子里</p>
+        <div class="cut-card hidden" id="cut-card" aria-hidden="true">
+          <div class="cut-card-sheet">
+            <span class="cut-card-title">Happy Birthday</span>
+            <textarea id="cut-card-message" class="cut-card-message" maxlength="48" rows="2" aria-label="生日祝福">生日快乐</textarea>
+            <span class="cut-card-doodles">+  *  +</span>
+          </div>
         </div>
         <div class="cut-knife" id="cut-knife">
           <picture>
@@ -319,7 +319,7 @@
         </div>
       </div>
       <p class="cut-hint" id="cut-hint"></p>
-      <button class="btn-primary btn-next hidden" id="plate-finish-btn">装盘完成</button>
+      <button class="btn-primary btn-next hidden" id="plate-finish-btn">写好祝福，完成</button>
     </section>
 
     <!-- 模块9: 收尾 -->

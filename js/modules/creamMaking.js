@@ -731,20 +731,32 @@ const CreamMakingModule = {
       progress += 0.018;
       this._clearCanvas();
 
-      const radius = this.canvas.width * 0.014;
+      const radius = this.canvas.width * 0.008;
       const startY = bowl.top - bowl.height * 0.44;
-      const targetY = bowl.cy - bowl.height * 0.18;
-      const currentY = startY + (targetY - startY) * Math.min(progress, 1);
+      const targetY = bowl.cy - bowl.height * 0.14;
+      const dropProgress = Utils.clamp(progress / 0.68, 0, 1);
+      const currentY = startY + (targetY - startY) * Utils.smoothstep(dropProgress);
+      const dropAlpha = 1 - Utils.smoothstep(Utils.clamp((progress - 0.58) / 0.16, 0, 1));
 
-      this.ctx.fillStyle = color.hex;
-      this.ctx.beginPath();
-      this.ctx.arc(bowl.cx - radius * 2.6, currentY, radius, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.beginPath();
-      this.ctx.arc(bowl.cx + radius * 2.4, currentY + bowl.height * 0.08, radius, 0, Math.PI * 2);
-      this.ctx.fill();
+      if (dropAlpha > 0.02) {
+        this.ctx.save();
+        this.ctx.globalAlpha = dropAlpha;
+        this.ctx.fillStyle = color.hex;
+        this.ctx.strokeStyle = Utils.hexToRgba('#FFFDF8', 0.42);
+        this.ctx.lineWidth = Math.max(1, radius * 0.18);
+        [
+          { x: bowl.cx - radius * 2.5, y: currentY },
+          { x: bowl.cx + radius * 2.2, y: currentY + bowl.height * 0.055 },
+        ].forEach((drop) => {
+          this.ctx.beginPath();
+          this.ctx.ellipse(drop.x, drop.y, radius * 0.82, radius * 1.25, 0, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.stroke();
+        });
+        this.ctx.restore();
+      }
 
-      const mixFactor = Utils.clamp((progress - 0.46) / 0.54, 0, 1);
+      const mixFactor = Utils.smoothstep(Utils.clamp((progress - 0.58) / 0.42, 0, 1));
       this._renderLiquid(color, mixFactor);
 
       if (progress < 1) {
@@ -848,7 +860,7 @@ const CreamMakingModule = {
     const midTone = Utils.hexToRgba(active.hex, 0.8 + safeMix * 0.14);
     const bottomTone = Utils.hexToRgba(active.hex, 0.84 + safeMix * 0.1);
     this.liquid.style.background = `radial-gradient(circle at 50% 38%, rgba(255,255,255,${0.2 + safeMix * 0.18}), ${topHighlight} 38%, ${midTone} 66%, ${bottomTone} 100%)`;
-    this.liquid.style.opacity = `${0.1 + safeMix * 0.78 + whipFactor * 0.08}`;
+    this.liquid.style.opacity = `${safeMix * (0.84 + whipFactor * 0.08)}`;
     this.liquid.style.boxShadow = 'none';
     this.liquid.style.transform = 'scale(1)';
     this.liquid.style.filter = `saturate(${1 + safeMix * 0.18}) brightness(${1 + whipFactor * 0.04})`;

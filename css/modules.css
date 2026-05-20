@@ -977,23 +977,77 @@
 }
 .cut-knife.active { filter: brightness(1.2); }
 .cut-knife img { width: 100%; }
-.plate-dropzone {
+.cut-card {
   position: absolute;
   right: 4%;
-  bottom: 4%;
-  width: clamp(130px, 30vw, 190px);
-  text-align: center;
+  top: 29%;
+  width: clamp(150px, 30vw, 220px);
+  z-index: 4;
+  transform: rotate(3deg);
   pointer-events: none;
-  z-index: 1;
 }
-.plate-dropzone img {
-  width: 100%;
+.cut-card-sheet {
+  position: relative;
+  min-height: clamp(116px, 20vw, 156px);
+  padding: 1rem 0.9rem 0.75rem;
+  background: rgba(255, 253, 239, 0.96);
+  border: 2px solid rgba(104, 68, 34, 0.22);
+  border-radius: 4px;
+  box-shadow: 0 8px 18px rgba(93, 59, 20, 0.16), inset 0 0 0 2px rgba(255,255,255,0.42);
+}
+.cut-card-sheet::before {
+  content: '';
+  position: absolute;
+  inset: 0.45rem;
+  border: 1px dashed rgba(199, 123, 99, 0.34);
+  border-radius: 3px;
+  pointer-events: none;
+}
+.cut-card-title {
+  position: relative;
   display: block;
+  margin-bottom: 0.3rem;
+  font-family: var(--font-body);
+  font-size: clamp(0.72rem, 2.1vw, 0.95rem);
+  letter-spacing: 0.08em;
+  color: #d65173;
+  text-align: center;
 }
-.plate-dropzone-text {
-  margin-top: -0.35rem;
-  font-size: 0.76rem;
-  color: rgba(93, 59, 20, 0.85);
+.cut-card-message {
+  position: relative;
+  width: 100%;
+  min-height: 3.3rem;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #4f3322;
+  font-family: var(--font-body);
+  font-size: clamp(0.92rem, 2.7vw, 1.2rem);
+  line-height: 1.45;
+  text-align: center;
+  overflow: hidden;
+  pointer-events: auto;
+}
+.cut-card-doodles {
+  position: relative;
+  display: block;
+  margin-top: 0.1rem;
+  color: #d65173;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-align: center;
+}
+@media (max-width: 767px) {
+  .cut-card {
+    right: 2%;
+    top: 32%;
+    width: clamp(132px, 38vw, 172px);
+  }
+  .cut-card-sheet {
+    padding: 0.8rem 0.7rem 0.6rem;
+  }
 }
 .cut-hint {
   font-size: 0.9rem;
