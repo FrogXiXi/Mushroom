@@ -6,7 +6,7 @@ const EndingModule = {
     const text = document.getElementById('ending-text');
     const restartBtn = document.getElementById('ending-restart');
 
-    text.innerHTML = '春尽夏生，岁岁欢愉，愿你万事顺意，平安喜乐<br>你的照片发生了一些魔法反应，记得去相册看看。';
+    text.innerHTML = '春尽夏生，岁岁欢愉，愿你万事顺意，平安喜乐';
 
     setTimeout(() => {
       text.style.animation = 'fadeInUp 800ms ease forwards';

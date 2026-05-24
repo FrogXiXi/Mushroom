@@ -193,10 +193,6 @@ const CakeCutModule = {
       this.ctx.drawImage(piece.canvas, piece.bounds.x + piece.offsetX, piece.bounds.y + piece.offsetY);
     });
 
-    if (this._cutComplete) {
-      this._drawCutSeam();
-    }
-
     if (this._cutLine.length > 1) {
       this.ctx.beginPath();
       this.ctx.strokeStyle = 'rgba(60,40,20,0.72)';
@@ -211,26 +207,6 @@ const CakeCutModule = {
     }
 
     this._updateCardPosition();
-  },
-
-  _drawCutSeam() {
-    const frame = this._layout.frame;
-    const seamX = this._getSliceCutX();
-    this.ctx.save();
-    this.ctx.strokeStyle = 'rgba(123, 73, 60, 0.38)';
-    this.ctx.lineWidth = Math.max(2, frame.width * 0.01);
-    this.ctx.beginPath();
-    this.ctx.moveTo(seamX, frame.y + frame.height * 0.08);
-    this.ctx.bezierCurveTo(
-      seamX + frame.width * 0.015,
-      frame.y + frame.height * 0.34,
-      seamX - frame.width * 0.01,
-      frame.y + frame.height * 0.68,
-      seamX + frame.width * 0.012,
-      frame.y + frame.height * 0.94,
-    );
-    this.ctx.stroke();
-    this.ctx.restore();
   },
 
   _requestDraw() {

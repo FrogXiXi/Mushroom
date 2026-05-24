@@ -6,7 +6,7 @@ const CONFIG = {
 
   // 寿星信息（修改此处即可自定义）
   birthday: {
-    name: '寿星',
+    name: '张子',
     date: '2026.05.30',
     theme: '春尽夏生',
   },
