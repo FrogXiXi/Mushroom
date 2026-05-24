@@ -951,15 +951,16 @@
 /* ===== 模块8: 切蛋糕 ===== */
 .cut-area {
   position: relative;
-  width: clamp(300px, 80vw, 600px);
-  height: clamp(350px, 65vh, 600px);
-  overflow: hidden;
+  width: clamp(320px, 92vw, 1100px);
+  height: clamp(350px, 65vh, 620px);
+  overflow: visible;
 }
 #cut-canvas {
   width: 100%;
   height: 100%;
   position: relative;
   z-index: 3;
+  pointer-events: none;
 }
 .cut-knife {
   position: absolute;
@@ -979,12 +980,16 @@
 .cut-knife img { width: 100%; }
 .cut-card {
   position: absolute;
-  right: 4%;
-  top: 29%;
-  width: clamp(150px, 30vw, 220px);
-  z-index: 4;
-  transform: rotate(3deg);
-  pointer-events: none;
+  left: 0;
+  top: 0;
+  width: var(--cut-card-width, 190px);
+  z-index: 2;
+  transform: translate3d(var(--cut-card-x, 0px), var(--cut-card-y, 0px), 0) rotate(3deg);
+  transform-origin: 16% 52%;
+  clip-path: inset(0 0 0 var(--cut-card-cover-left, 0px));
+  -webkit-clip-path: inset(0 0 0 var(--cut-card-cover-left, 0px));
+  pointer-events: auto;
+  transition: clip-path 160ms ease, -webkit-clip-path 160ms ease;
 }
 .cut-card-sheet {
   position: relative;
@@ -994,6 +999,20 @@
   border: 2px solid rgba(104, 68, 34, 0.22);
   border-radius: 4px;
   box-shadow: 0 8px 18px rgba(93, 59, 20, 0.16), inset 0 0 0 2px rgba(255,255,255,0.42);
+}
+.cut-card-sheet::after {
+  content: '';
+  position: absolute;
+  left: -22%;
+  top: 48%;
+  width: 28%;
+  height: 18%;
+  background: rgba(255, 248, 214, 0.96);
+  border: 2px solid rgba(104, 68, 34, 0.18);
+  border-right: 0;
+  transform: rotate(-2deg);
+  z-index: -1;
+  box-shadow: 0 5px 10px rgba(93, 59, 20, 0.08);
 }
 .cut-card-sheet::before {
   content: '';
@@ -1041,9 +1060,7 @@
 }
 @media (max-width: 767px) {
   .cut-card {
-    right: 2%;
-    top: 32%;
-    width: clamp(132px, 38vw, 172px);
+    width: var(--cut-card-width, 160px);
   }
   .cut-card-sheet {
     padding: 0.8rem 0.7rem 0.6rem;

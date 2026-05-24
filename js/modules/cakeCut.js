@@ -84,6 +84,7 @@ const CakeCutModule = {
 
     const sceneCtx = this._sceneCanvas.getContext('2d');
     this._layout = Utils.getCakeLayout(this._sceneCanvas, this._cakeLayers);
+    this._shiftCakeLayoutForPullOut();
     this._fullMaskCanvas = Utils.createMaskCanvas(this._sceneCanvas.width, this._sceneCanvas.height, this._layout, {
       decorations: App.state.decorations || [],
       decorationImages: this._decorationImages,
@@ -101,6 +102,28 @@ const CakeCutModule = {
       decorations: App.state.decorations || [],
       decorationImages: this._decorationImages,
     });
+  },
+
+  _shiftCakeLayoutForPullOut() {
+    if (!this._layout?.frame) {
+      return;
+    }
+
+    const frame = this._layout.frame;
+    const desiredShift = this._sceneCanvas.width * 0.11;
+    const leftGuard = this._sceneCanvas.width * 0.035;
+    const shift = Math.min(desiredShift, Math.max(0, frame.x - leftGuard));
+    if (shift <= 0) {
+      return;
+    }
+
+    this._layout.layers.forEach((layer) => {
+      layer.x -= shift;
+    });
+    this._layout.frame = {
+      ...frame,
+      x: frame.x - shift,
+    };
   },
 
   _rememberKnifeHome() {
@@ -123,6 +146,7 @@ const CakeCutModule = {
       draggable: false,
     })];
     this._setCardVisible(false);
+    this._resetCardPosition();
     this.finishBtn.classList.add('hidden');
   },
 
@@ -185,6 +209,8 @@ const CakeCutModule = {
       this.ctx.stroke();
       this.ctx.setLineDash([]);
     }
+
+    this._updateCardPosition();
   },
 
   _drawCutSeam() {
@@ -279,15 +305,25 @@ const CakeCutModule = {
   },
 
   _bindPieceDragEvents() {
-    const start = (event) => {
+    const isEditableTarget = (target) => target && typeof target.closest === 'function'
+      && target.closest('textarea, input, button');
+    const getSliceIndex = () => this._pieces.findIndex((piece) => piece.role === 'slice' && piece.draggable);
+
+    const beginDrag = (event, forceSlice = false) => {
       if (this._knifeDragging || !this._cutComplete) {
-        return;
+        return false;
+      }
+      if (isEditableTarget(event.target)) {
+        return false;
+      }
+      if (!forceSlice && event.target && typeof event.target.closest === 'function' && event.target.closest('#cut-knife')) {
+        return false;
       }
 
       const point = Utils.getCanvasPos(this.canvas, event);
-      const hitIndex = this._hitTestPiece(point);
+      const hitIndex = forceSlice ? getSliceIndex() : this._hitTestPiece(point);
       if (hitIndex < 0 || !this._pieces[hitIndex].draggable) {
-        return;
+        return false;
       }
 
       event.preventDefault();
@@ -297,6 +333,17 @@ const CakeCutModule = {
         x: this._pieces[hitIndex].offsetX,
         y: this._pieces[hitIndex].offsetY,
       };
+      return true;
+    };
+
+    const start = (event) => {
+      beginDrag(event, false);
+    };
+
+    const startCard = (event) => {
+      if (beginDrag(event, true)) {
+        event.stopPropagation();
+      }
     };
 
     const move = (event) => {
@@ -309,6 +356,7 @@ const CakeCutModule = {
       piece.offsetX = this._origOffset.x + (point.x - this._dragStart.x);
       piece.offsetY = this._origOffset.y + (point.y - this._dragStart.y);
       this._clampPieceOffset(piece);
+      this._updateCardPosition();
       this._requestDraw();
     };
 
@@ -320,11 +368,14 @@ const CakeCutModule = {
       this._dragStart = null;
       this._origOffset = null;
       this._syncState();
+      this._updateCardPosition();
       this._requestDraw();
     };
 
-    this.canvas.addEventListener('mousedown', start);
-    this.canvas.addEventListener('touchstart', start, { passive: false });
+    this.cutArea.addEventListener('mousedown', start);
+    this.cutArea.addEventListener('touchstart', start, { passive: false });
+    this.cardEl.addEventListener('mousedown', startCard);
+    this.cardEl.addEventListener('touchstart', startCard, { passive: false });
     document.addEventListener('mousemove', move, { passive: false });
     document.addEventListener('touchmove', move, { passive: false });
     document.addEventListener('mouseup', end);
@@ -332,8 +383,10 @@ const CakeCutModule = {
     document.addEventListener('touchcancel', end);
 
     this._cleanupFns.push(() => {
-      this.canvas.removeEventListener('mousedown', start);
-      this.canvas.removeEventListener('touchstart', start);
+      this.cutArea.removeEventListener('mousedown', start);
+      this.cutArea.removeEventListener('touchstart', start);
+      this.cardEl.removeEventListener('mousedown', startCard);
+      this.cardEl.removeEventListener('touchstart', startCard);
       document.removeEventListener('mousemove', move);
       document.removeEventListener('touchmove', move);
       document.removeEventListener('mouseup', end);
@@ -497,6 +550,7 @@ const CakeCutModule = {
 
     this._clampPieceOffset(this._pieces[1]);
     this._setCardVisible(true);
+    this._updateCardPosition();
     this.finishBtn.classList.remove('hidden');
     App.state.cutPiecePulled = true;
     App.state.magicCardRevealed = true;
@@ -604,11 +658,11 @@ const CakeCutModule = {
 
   _clampPieceOffset(piece) {
     const minX = -piece.bounds.x;
-    const maxX = this.canvas.width - (piece.bounds.x + piece.bounds.width * 0.42);
+    const maxX = this.canvas.width - (piece.bounds.x + piece.bounds.width) - this.canvas.width * 0.025;
     const minY = -piece.bounds.y;
     const maxY = this.canvas.height - (piece.bounds.y + piece.bounds.height);
-    piece.offsetX = Utils.clamp(piece.offsetX, minX, maxX);
-    piece.offsetY = Utils.clamp(piece.offsetY, minY, maxY);
+    piece.offsetX = Utils.clamp(piece.offsetX, minX, Math.max(minX, maxX));
+    piece.offsetY = Utils.clamp(piece.offsetY, minY, Math.max(minY, maxY));
   },
 
   _setCardVisible(visible) {
@@ -617,6 +671,48 @@ const CakeCutModule = {
     }
     this.cardEl.classList.toggle('hidden', !visible);
     this.cardEl.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    if (!visible) {
+      this._resetCardPosition();
+    }
+  },
+
+  _updateCardPosition() {
+    if (!this.cardEl || !this._cutComplete || !this._layout) {
+      return;
+    }
+
+    const slice = this._pieces.find((piece) => piece.role === 'slice');
+    if (!slice) {
+      return;
+    }
+
+    const rect = this.canvas.getBoundingClientRect();
+    const scaleX = rect.width / this.canvas.width;
+    const scaleY = rect.height / this.canvas.height;
+    const frame = this._layout.frame;
+    const seamX = this._getSliceCutX();
+    const cardWidth = Utils.clamp(frame.width * scaleX * 0.44, 140, 224);
+    const cardLeftCanvas = seamX + slice.offsetX - (cardWidth / scaleX) * 1.05;
+    const cardTopCanvas = frame.y + frame.height * 0.13 + slice.offsetY;
+    const cardLeft = cardLeftCanvas * scaleX;
+    const cardTop = cardTopCanvas * scaleY;
+    const seamCss = seamX * scaleX;
+    const coverLeft = Utils.clamp(seamCss - cardLeft + 4, 0, cardWidth * 0.86);
+
+    this.cardEl.style.setProperty('--cut-card-width', `${cardWidth}px`);
+    this.cardEl.style.setProperty('--cut-card-x', `${cardLeft}px`);
+    this.cardEl.style.setProperty('--cut-card-y', `${cardTop}px`);
+    this.cardEl.style.setProperty('--cut-card-cover-left', `${coverLeft}px`);
+  },
+
+  _resetCardPosition() {
+    if (!this.cardEl) {
+      return;
+    }
+    this.cardEl.style.removeProperty('--cut-card-width');
+    this.cardEl.style.removeProperty('--cut-card-x');
+    this.cardEl.style.removeProperty('--cut-card-y');
+    this.cardEl.style.removeProperty('--cut-card-cover-left');
   },
 
   _syncState() {
