@@ -40,37 +40,12 @@ Prompt: mixing bowl sticker asset, rounded cream bowl with sky-blue rim and tiny
 Negative: photorealistic bowl, metallic, glossy ceramic reflections, vector clean lines, black background, watermark, blur
 Settings: Seed=50505050, Size=1536x1024, Sampler=Euler a, Steps=24, CFG=6.9
 
+## 装饰素材补充
 
-
-### decorations/toppers/shapes/heart/default.png
-Prompt: heart topper sticker asset, rounded heart shape in raspberry pink with butter-yellow highlight on a slim stick, naive childlike crayon drawing, visible wax grain, uneven hand-colored fill, thick slightly wobbly outline, transparent background
-Negative: photorealistic topper, glossy, vector clean lines, black background, watermark, blur
-Settings: Seed=10101004, Size=768x768, Sampler=Euler a, Steps=18, CFG=6.2
-
-### decorations/toppers/shapes/star/default.png
-Prompt: star topper sticker asset, rounded five-point star in butter-yellow with sky-blue outline on a slim stick, naive childlike crayon drawing, visible wax grain, uneven hand-colored fill, thick slightly wobbly outline, transparent background
-Negative: photorealistic topper, glossy, vector clean lines, black background, watermark, blur
-Settings: Seed=10101005, Size=768x768, Sampler=Euler a, Steps=18, CFG=6.2
-
-### decorations/toppers/shapes/moon/default.png
-Prompt: moon topper sticker asset, crescent moon in butter-yellow with sky-blue accent on a slim stick, naive childlike crayon drawing, visible wax grain, uneven hand-colored fill, thick slightly wobbly outline, transparent background
-Negative: photorealistic topper, glossy, vector clean lines, black background, watermark, blur
-Settings: Seed=10101006, Size=768x768, Sampler=Euler a, Steps=18, CFG=6.2
-
-### decorations/toppers/ribbons/bow/default.png
-Prompt: bow topper sticker asset, rounded ribbon bow in raspberry pink with cream highlights on a slim stick, naive childlike crayon drawing, visible wax grain, uneven hand-colored fill, thick slightly wobbly outline, transparent background
-Negative: photorealistic ribbon, glossy satin, vector clean lines, black background, watermark, blur
-Settings: Seed=10101007, Size=768x768, Sampler=Euler a, Steps=18, CFG=6.2
-
-### decorations/toppers/plaques/happy_birthday/default.png
-Prompt: cake topper plaque sticker asset, small rounded plaque with loose hand-drawn crayon lettering that reads Happy Birthday, cream plaque with sky-blue outline and raspberry-pink accent, attached to a slim stick, naive childlike crayon drawing, visible wax grain, uneven hand-colored fill, transparent background
-Negative: photorealistic plaque, glossy acrylic, vector clean lines, black background, watermark, dense typography, blur
-Settings: Seed=10101008, Size=1024x512, Sampler=Euler a, Steps=24, CFG=7.0
-
-### decorations/toppers/plaques/chun_jin_xia_sheng/default.png
-Prompt: cake topper plaque sticker asset, small rounded plaque with loose hand-drawn crayon lettering that reads 春尽夏生, cream plaque with sky-blue outline and raspberry-pink accent, attached to a slim stick, naive childlike crayon drawing, visible wax grain, uneven hand-colored fill, transparent background
-Negative: photorealistic plaque, glossy acrylic, vector clean lines, black background, watermark, dense typography, blur
-Settings: Seed=10101009, Size=1024x512, Sampler=Euler a, Steps=24, CFG=7.0
+### decorations/sweets/heart_chocolate/default.png
+Prompt: heart-shaped chocolate candy sticker asset, a small puffy heart bonbon in soft cocoa brown with a cream highlight and tiny raspberry-pink sprinkle accent, naive childlike crayon drawing, visible wax grain, uneven hand-colored fill, thick slightly wobbly outline, transparent background
+Negative: photorealistic chocolate, glossy candy shell, metallic wrapper, vector clean lines, black background, watermark, blur
+Settings: Seed=10101002, Size=768x768, Sampler=Euler a, Steps=20, CFG=6.4
 
 ## 仪式与切蛋糕素材
 
